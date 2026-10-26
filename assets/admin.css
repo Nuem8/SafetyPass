@@ -1,0 +1,219 @@
+.safety-pass {
+	max-width: 1120px;
+}
+
+.safety-pass__tabs {
+	margin: 0 0 16px;
+}
+
+.safety-pass__tab-note {
+	display: inline-block;
+	margin-left: 6px;
+	font-size: 12px;
+	font-weight: 600;
+}
+
+.safety-pass__tab--stop .safety-pass__tab-note {
+	color: #b32d2e;
+}
+
+.safety-pass__tab--look .safety-pass__tab-note {
+	color: #8a6a00;
+}
+
+.safety-pass__intro {
+	max-width: 62ch;
+}
+
+.safety-pass__next {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 18px;
+	align-items: center;
+	margin: 16px 0 24px;
+	padding: 16px 18px;
+	background: #fff;
+	border: 1px solid #dcdcde;
+	border-left-width: 4px;
+}
+
+.safety-pass__next-copy {
+	min-width: 0;
+}
+
+.safety-pass__gauge {
+	display: block;
+	width: 140px;
+	height: auto;
+	flex: 0 0 auto;
+}
+
+.safety-pass__gauge svg {
+	display: block;
+	width: 100%;
+	height: auto;
+}
+
+.safety-pass__gauge--hero {
+	width: 200px;
+}
+
+.safety-pass__gauge--tab {
+	display: inline-block;
+	width: 42px;
+	height: 42px;
+	margin-right: 6px;
+	vertical-align: middle;
+}
+
+.safety-pass__next--stop {
+	border-left-color: #b32d2e;
+}
+
+.safety-pass__next--look {
+	border-left-color: #dba617;
+}
+
+.safety-pass__next--ok {
+	border-left-color: #00a32a;
+}
+
+.safety-pass__kicker {
+	margin: 0 0 4px;
+	color: #50575e;
+	font-size: 12px;
+	font-weight: 600;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+}
+
+.safety-pass__action {
+	margin: 0;
+	font-size: 16px;
+}
+
+.safety-pass__list {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.safety-pass__item {
+	display: flex;
+	gap: 16px;
+	align-items: flex-start;
+	margin: 0 0 12px;
+	padding: 14px 16px;
+	background: #fff;
+	border: 1px solid #dcdcde;
+	border-left-width: 4px;
+}
+
+.safety-pass__body {
+	min-width: 0;
+	flex: 1 1 auto;
+}
+
+.safety-pass__item--stop {
+	border-left-color: #b32d2e;
+}
+
+.safety-pass__item--look {
+	border-left-color: #dba617;
+}
+
+.safety-pass__item--ok {
+	border-left-color: #00a32a;
+}
+
+.safety-pass__row {
+	margin: 0 0 6px;
+}
+
+.safety-pass__item p {
+	margin: 0 0 8px;
+}
+
+.safety-pass__do {
+	color: #1d2327;
+}
+
+.safety-pass__names {
+	margin: 8px 0 0;
+	padding-left: 18px;
+}
+
+.safety-pass__table-wrap {
+	overflow-x: auto;
+	margin-top: 8px;
+}
+
+.safety-pass__table {
+	width: 100%;
+	border-collapse: collapse;
+	background: #fff;
+	font-size: 13px;
+}
+
+.safety-pass__table th,
+.safety-pass__table td {
+	padding: 8px 10px;
+	border-bottom: 1px solid #dcdcde;
+	text-align: left;
+	vertical-align: top;
+}
+
+.safety-pass__table thead th {
+	color: #50575e;
+	font-size: 12px;
+	font-weight: 600;
+}
+
+.safety-pass__table tbody th {
+	font-weight: 600;
+}
+
+.safety-pass__meta {
+	display: block;
+	margin-top: 8px;
+	color: #50575e;
+}
+
+.safety-pass__state {
+	font-weight: 600;
+}
+
+.safety-pass__state--active {
+	color: #007017;
+}
+
+.safety-pass__state--disabled {
+	color: #b32d2e;
+}
+
+.safety-pass__access {
+	margin-top: 6px;
+}
+
+.safety-pass__advice {
+	margin: 20px 0 0;
+	padding: 14px 16px;
+	max-width: 68ch;
+	background: #fff;
+	border: 1px solid #dcdcde;
+}
+
+.safety-pass__advice h2 {
+	margin: 0 0 8px;
+	font-size: 16px;
+}
+
+.safety-pass__advice ul {
+	margin: 8px 0 8px 18px;
+	list-style: disc;
+}
+
+.safety-pass__foot {
+	margin-top: 20px;
+	color: #50575e;
+}
