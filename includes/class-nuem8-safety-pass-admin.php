@@ -1,6 +1,6 @@
 <?php
 /**
- * Safety Pass admin screen.
+ * nuem8-safety-pass admin screen.
  *
  * @package NueM8_Safety_Pass
  */
@@ -19,8 +19,8 @@ class NueM8_Safety_Pass_Admin {
 	 */
 	public static function register_menu() {
 		$hook = add_menu_page(
-			__( 'Safety Pass by NueM8', 'nuem8-safety-pass' ),
-			__( 'Safety Pass', 'nuem8-safety-pass' ),
+			__( 'NueM8 Safety Pass', 'safety-pass-by-nuem8' ),
+			__( 'NueM8 Safety Pass', 'safety-pass-by-nuem8' ),
 			NueM8_Safety_Pass_Checks::VIEW_CAP,
 			'nuem8-safety-pass',
 			array( __CLASS__, 'render' ),
@@ -43,7 +43,7 @@ class NueM8_Safety_Pass_Admin {
 		}
 
 		$url = admin_url( 'admin.php?page=nuem8-safety-pass' );
-		$links[] = '<a href="' . esc_url( $url ) . '">' . esc_html__( 'Open Safety Pass', 'nuem8-safety-pass' ) . '</a>';
+		$links[] = '<a href="' . esc_url( $url ) . '">' . esc_html__( 'Open nuem8-safety-pass', 'safety-pass-by-nuem8' ) . '</a>';
 
 		return $links;
 	}
@@ -79,7 +79,7 @@ class NueM8_Safety_Pass_Admin {
 	 */
 	public static function trust_admin() {
 		if ( ! NueM8_Safety_Pass_Checks::current_user_can_view() ) {
-			self::deny( __( 'Only an administrator can change Safety Pass.', 'nuem8-safety-pass' ) );
+			self::deny( __( 'Only an administrator can change nuem8-safety-pass.', 'safety-pass-by-nuem8' ) );
 		}
 
 		$saved = NueM8_Safety_Pass_Checks::trust_admin( self::posted_user_id( 'nuem8_safety_pass_trust_admin' ) );
@@ -101,7 +101,7 @@ class NueM8_Safety_Pass_Admin {
 	 */
 	public static function approve_admin() {
 		if ( ! NueM8_Safety_Pass_Checks::current_user_can_view() ) {
-			self::deny( __( 'Only an administrator can change Safety Pass.', 'nuem8-safety-pass' ) );
+			self::deny( __( 'Only an administrator can change nuem8-safety-pass.', 'safety-pass-by-nuem8' ) );
 		}
 
 		wp_safe_redirect(
@@ -123,7 +123,7 @@ class NueM8_Safety_Pass_Admin {
 	 */
 	public static function set_admin_access() {
 		if ( ! NueM8_Safety_Pass_Checks::current_user_can_view() ) {
-			self::deny( __( 'Only an administrator can change Safety Pass.', 'nuem8-safety-pass' ) );
+			self::deny( __( 'Only an administrator can change nuem8-safety-pass.', 'safety-pass-by-nuem8' ) );
 		}
 
 		$mode   = self::posted_mode( 'nuem8_safety_pass_set_admin_access' );
@@ -150,7 +150,7 @@ class NueM8_Safety_Pass_Admin {
 	 */
 	public static function render() {
 		if ( ! NueM8_Safety_Pass_Checks::current_user_can_view() ) {
-			self::deny( __( 'Only an administrator can open Safety Pass.', 'nuem8-safety-pass' ) );
+			self::deny( __( 'Only an administrator can open nuem8-safety-pass.', 'safety-pass-by-nuem8' ) );
 		}
 
 		$findings = NueM8_Safety_Pass_Checks::run();
@@ -159,19 +159,19 @@ class NueM8_Safety_Pass_Admin {
 		$active   = self::current_tab( $next );
 
 		echo '<div class="wrap safety-pass">';
-		echo '<h1>' . esc_html__( 'Safety Pass by NueM8', 'nuem8-safety-pass' ) . '</h1>';
+		echo '<h1>' . esc_html__( 'NueM8 Safety Pass', 'safety-pass-by-nuem8' ) . '</h1>';
 		$intro = NueM8_Safety_Pass_Checks::holds_new_admins()
-			? __( 'A note on a tab title means that part needs a look. Safety Pass does not update, delete, or back up the site. Safety Pass Pro disables a new administrator until a signed-in administrator approves them. The account you are signed in with cannot be disabled.', 'nuem8-safety-pass' )
-			: __( 'A note on a tab title means that part needs a look. Safety Pass does not update, delete, or back up the site. A new administrator is listed here until you approve them. Safety Pass Pro keeps that account signed out until then. The account you are signed in with cannot be disabled.', 'nuem8-safety-pass' );
+			? __( 'A note on a tab title means that part needs a look. nuem8-safety-pass does not update, delete, or back up the site. nuem8-safety-pass Pro disables a new administrator until a signed-in administrator approves them. The account you are signed in with cannot be disabled.', 'safety-pass-by-nuem8' )
+			: __( 'A note on a tab title means that part needs a look. nuem8-safety-pass does not update, delete, or back up the site. A new administrator is listed here until you approve them. nuem8-safety-pass Pro keeps that account signed out until then. The account you are signed in with cannot be disabled.', 'safety-pass-by-nuem8' );
 
 		echo '<p class="safety-pass__intro">' . esc_html( $intro ) . '</p>';
 
 		if ( '1' === self::query_flag( 'trusted' ) ) {
-			echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'That account is now expected.', 'nuem8-safety-pass' ) . '</p></div>';
+			echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'That account is now expected.', 'safety-pass-by-nuem8' ) . '</p></div>';
 		}
 
 		if ( '1' === self::query_flag( 'trust_failed' ) ) {
-			echo '<div class="notice notice-error"><p>' . esc_html__( 'That account is not an administrator, so it was left off the expected list.', 'nuem8-safety-pass' ) . '</p></div>';
+			echo '<div class="notice notice-error"><p>' . esc_html__( 'That account is not an administrator, so it was left off the expected list.', 'safety-pass-by-nuem8' ) . '</p></div>';
 		}
 
 		self::render_access_notice();
@@ -190,10 +190,10 @@ class NueM8_Safety_Pass_Admin {
 
 		echo '</ol>';
 		self::render_break_in();
-		echo '<p class="safety-pass__foot"><a href="' . esc_url( 'https://nuem8.com/wordpress/safety-pass' ) . '">' . esc_html__( 'Safety Pass by NueM8', 'nuem8-safety-pass' ) . '</a><br>' . esc_html__( '© 2026 NueM8 LLC', 'nuem8-safety-pass' ) . '</p>';
+		echo '<p class="safety-pass__foot"><a href="' . esc_url( 'https://nuem8.com/wordpress/nuem8-safety-pass' ) . '">' . esc_html__( 'NueM8 Safety Pass', 'safety-pass-by-nuem8' ) . '</a><br>' . esc_html__( '© 2026 NueM8 LLC', 'safety-pass-by-nuem8' ) . '</p>';
 
 		/**
-		 * Extra blocks on the Safety Pass screen. Safety Pass Pro prints its email settings here.
+		 * Extra blocks on the nuem8-safety-pass screen. nuem8-safety-pass Pro prints its email settings here.
 		 */
 		do_action( 'nuem8_safety_pass_admin_page' );
 
@@ -201,21 +201,21 @@ class NueM8_Safety_Pass_Admin {
 	}
 
 	/**
-	 * Fixed advice. Safety Pass does not change passwords or delete the site.
+	 * Fixed advice. nuem8-safety-pass does not change passwords or delete the site.
 	 */
 	private static function render_break_in() {
 		echo '<section class="safety-pass__advice">';
-		echo '<h2>' . esc_html__( 'If you think someone broke in', 'nuem8-safety-pass' ) . '</h2>';
-		echo '<p>' . esc_html__( 'Change these before you keep using the site:', 'nuem8-safety-pass' ) . '</p>';
+		echo '<h2>' . esc_html__( 'If you think someone broke in', 'safety-pass-by-nuem8' ) . '</h2>';
+		echo '<p>' . esc_html__( 'Change these before you keep using the site:', 'safety-pass-by-nuem8' ) . '</p>';
 		echo '<ul>';
-		echo '<li>' . esc_html__( 'Every administrator password', 'nuem8-safety-pass' ) . '</li>';
-		echo '<li>' . esc_html__( 'The hosting account password', 'nuem8-safety-pass' ) . '</li>';
-		echo '<li>' . esc_html__( 'The database password', 'nuem8-safety-pass' ) . '</li>';
-		echo '<li>' . esc_html__( 'The secret keys in wp-config.php', 'nuem8-safety-pass' ) . '</li>';
-		echo '<li>' . esc_html__( 'Application passwords under Users → Profile', 'nuem8-safety-pass' ) . '</li>';
-		echo '<li>' . esc_html__( 'API keys stored by plugins', 'nuem8-safety-pass' ) . '</li>';
+		echo '<li>' . esc_html__( 'Every administrator password', 'safety-pass-by-nuem8' ) . '</li>';
+		echo '<li>' . esc_html__( 'The hosting account password', 'safety-pass-by-nuem8' ) . '</li>';
+		echo '<li>' . esc_html__( 'The database password', 'safety-pass-by-nuem8' ) . '</li>';
+		echo '<li>' . esc_html__( 'The secret keys in wp-config.php', 'safety-pass-by-nuem8' ) . '</li>';
+		echo '<li>' . esc_html__( 'Application passwords under Users → Profile', 'safety-pass-by-nuem8' ) . '</li>';
+		echo '<li>' . esc_html__( 'API keys stored by plugins', 'safety-pass-by-nuem8' ) . '</li>';
 		echo '</ul>';
-		echo '<p>' . esc_html__( 'Use new passwords that this site has not used before. The safest replacement is a new WordPress install. Move the pages, posts, and uploads you still want. Leave the old files in place until the new site is working, then delete the old install from the host. Safety Pass will not delete it.', 'nuem8-safety-pass' ) . '</p>';
+		echo '<p>' . esc_html__( 'Use new passwords that this site has not used before. The safest replacement is a new WordPress install. Move the pages, posts, and uploads you still want. Leave the old files in place until the new site is working, then delete the old install from the host. nuem8-safety-pass will not delete it.', 'safety-pass-by-nuem8' ) . '</p>';
 		echo '</section>';
 	}
 
@@ -225,24 +225,24 @@ class NueM8_Safety_Pass_Admin {
 	private static function render_next( $next ) {
 		if ( ! is_array( $next ) ) {
 			$status = 'ok';
-			$action = __( 'Nothing needs you this month. Open Safety Pass again after you add a plugin or a user.', 'nuem8-safety-pass' );
+			$action = __( 'Nothing needs you this month. Open nuem8-safety-pass again after you add a plugin or a user.', 'safety-pass-by-nuem8' );
 		} else {
 			$status = self::status_slug( isset( $next['status'] ) ? $next['status'] : 'look' );
 			$action = isset( $next['action'] ) ? (string) $next['action'] : '';
 
 			if ( '' === $action ) {
-				$action = __( 'Open the marked tab and read the detail.', 'nuem8-safety-pass' );
+				$action = __( 'Open the marked tab and read the detail.', 'safety-pass-by-nuem8' );
 			}
 		}
 
 		echo '<section class="safety-pass__next safety-pass__next--' . esc_attr( $status ) . '">';
-		$label = ( is_array( $next ) && ! empty( $next['id'] ) ) ? self::gauge_label( (string) $next['id'] ) : __( 'Safety Pass', 'nuem8-safety-pass' );
+		$label = ( is_array( $next ) && ! empty( $next['id'] ) ) ? self::gauge_label( (string) $next['id'] ) : __( 'nuem8-safety-pass', 'safety-pass-by-nuem8' );
 		echo wp_kses(
 			self::status_gauge( $status, 'safety-pass__gauge safety-pass__gauge--hero', $label ),
 			self::gauge_allowed_html()
 		);
 		echo '<div class="safety-pass__next-copy">';
-		echo '<p class="safety-pass__kicker">' . esc_html__( 'Do this first', 'nuem8-safety-pass' ) . '</p>';
+		echo '<p class="safety-pass__kicker">' . esc_html__( 'Do this first', 'safety-pass-by-nuem8' ) . '</p>';
 		echo '<p class="safety-pass__action">' . esc_html( $action ) . '</p>';
 		echo '</div></section>';
 	}
@@ -293,7 +293,7 @@ class NueM8_Safety_Pass_Admin {
 				echo '<li>' . esc_html(
 					sprintf(
 						/* translators: %d: number of additional plugins not listed. */
-						_n( '%d more plugin', '%d more plugins', $extra, 'nuem8-safety-pass' ),
+						_n( '%d more plugin', '%d more plugins', $extra, 'safety-pass-by-nuem8' ),
 						$extra
 					)
 				) . '</li>';
@@ -314,19 +314,19 @@ class NueM8_Safety_Pass_Admin {
 	 */
 	private static function render_admins( array $accounts ) {
 		$columns = array(
-			__( 'Name', 'nuem8-safety-pass' ),
-			__( 'Login', 'nuem8-safety-pass' ),
-			__( 'Status', 'nuem8-safety-pass' ),
-			__( 'On file', 'nuem8-safety-pass' ),
-			__( 'Email', 'nuem8-safety-pass' ),
-			__( 'Registered', 'nuem8-safety-pass' ),
-			__( 'Last sign-in', 'nuem8-safety-pass' ),
-			__( 'Actions', 'nuem8-safety-pass' ),
+			__( 'Name', 'safety-pass-by-nuem8' ),
+			__( 'Login', 'safety-pass-by-nuem8' ),
+			__( 'Status', 'safety-pass-by-nuem8' ),
+			__( 'On file', 'safety-pass-by-nuem8' ),
+			__( 'Email', 'safety-pass-by-nuem8' ),
+			__( 'Registered', 'safety-pass-by-nuem8' ),
+			__( 'Last sign-in', 'safety-pass-by-nuem8' ),
+			__( 'Actions', 'safety-pass-by-nuem8' ),
 		);
 
 		echo '<div class="safety-pass__table-wrap">';
 		echo '<table class="safety-pass__table">';
-		echo '<caption class="screen-reader-text">' . esc_html__( 'Administrators', 'nuem8-safety-pass' ) . '</caption>';
+		echo '<caption class="screen-reader-text">' . esc_html__( 'Administrators', 'safety-pass-by-nuem8' ) . '</caption>';
 		echo '<thead><tr>';
 
 		foreach ( $columns as $column ) {
@@ -343,7 +343,7 @@ class NueM8_Safety_Pass_Admin {
 			}
 
 			++$shown;
-			$on_file = ! empty( $account['is_new'] ) ? __( 'New', 'nuem8-safety-pass' ) : __( 'On file', 'nuem8-safety-pass' );
+			$on_file = ! empty( $account['is_new'] ) ? __( 'New', 'safety-pass-by-nuem8' ) : __( 'On file', 'safety-pass-by-nuem8' );
 
 			echo '<tr>';
 			echo '<th scope="row">' . esc_html( self::plain( isset( $account['name'] ) ? $account['name'] : '' ) ) . '</th>';
@@ -365,7 +365,7 @@ class NueM8_Safety_Pass_Admin {
 				echo '<input type="hidden" name="action" value="nuem8_safety_pass_trust_admin" />';
 				echo '<input type="hidden" name="user_id" value="' . esc_attr( (string) $account['id'] ) . '" />';
 				submit_button(
-					__( 'This account is expected', 'nuem8-safety-pass' ),
+					__( 'This account is expected', 'safety-pass-by-nuem8' ),
 					'secondary',
 					'submit',
 					false
@@ -381,13 +381,13 @@ class NueM8_Safety_Pass_Admin {
 		}
 
 		if ( 0 === $shown ) {
-			echo '<tr><td colspan="8">' . esc_html__( 'No administrators were found.', 'nuem8-safety-pass' ) . '</td></tr>';
+			echo '<tr><td colspan="8">' . esc_html__( 'No administrators were found.', 'safety-pass-by-nuem8' ) . '</td></tr>';
 		}
 
 		echo '</tbody></table></div>';
 		$admin_note = NueM8_Safety_Pass_Checks::holds_new_admins()
-			? __( 'Sign-in times start while Safety Pass is active. An administrator who is already signed in keeps that session time. Safety Pass Pro keeps a new administrator signed out until Approve is clicked.', 'nuem8-safety-pass' )
-			: __( 'Sign-in times start while Safety Pass is active. An administrator who is already signed in keeps that session time. Approve adds a new administrator to the expected list. Safety Pass Pro keeps that account signed out until you approve it.', 'nuem8-safety-pass' );
+			? __( 'Sign-in times start while nuem8-safety-pass is active. An administrator who is already signed in keeps that session time. nuem8-safety-pass Pro keeps a new administrator signed out until Approve is clicked.', 'safety-pass-by-nuem8' )
+			: __( 'Sign-in times start while nuem8-safety-pass is active. An administrator who is already signed in keeps that session time. Approve adds a new administrator to the expected list. nuem8-safety-pass Pro keeps that account signed out until you approve it.', 'safety-pass-by-nuem8' );
 
 		echo '<p class="safety-pass__meta">' . esc_html( $admin_note ) . '</p>';
 	}
@@ -398,16 +398,16 @@ class NueM8_Safety_Pass_Admin {
 	private static function render_access_notice() {
 		$result   = self::query_flag( 'admin_access' );
 		$messages = array(
-			'disabled'     => array( 'success', __( 'That account is disabled. It cannot sign in.', 'nuem8-safety-pass' ) ),
-			'enabled'      => array( 'success', __( 'That account is enabled again.', 'nuem8-safety-pass' ) ),
-			'approved'     => array( 'success', __( 'That account is approved. It can sign in.', 'nuem8-safety-pass' ) ),
-			'self'         => array( 'error', __( 'The account you are signed in with cannot be disabled.', 'nuem8-safety-pass' ) ),
-			'approve_self' => array( 'error', __( 'The account you are signed in with cannot approve itself.', 'nuem8-safety-pass' ) ),
-			'last'         => array( 'error', __( 'The last administrator who can sign in cannot be disabled.', 'nuem8-safety-pass' ) ),
-			'protected'    => array( 'error', __( 'A network administrator cannot be disabled here.', 'nuem8-safety-pass' ) ),
-			'held'         => array( 'error', __( 'That account is not on the expected list yet. Approve it first.', 'nuem8-safety-pass' ) ),
-			'unchanged'    => array( 'error', __( 'That account is already expected.', 'nuem8-safety-pass' ) ),
-			'invalid'      => array( 'error', __( 'That account is not an administrator, so it was left unchanged.', 'nuem8-safety-pass' ) ),
+			'disabled'     => array( 'success', __( 'That account is disabled. It cannot sign in.', 'safety-pass-by-nuem8' ) ),
+			'enabled'      => array( 'success', __( 'That account is enabled again.', 'safety-pass-by-nuem8' ) ),
+			'approved'     => array( 'success', __( 'That account is approved. It can sign in.', 'safety-pass-by-nuem8' ) ),
+			'self'         => array( 'error', __( 'The account you are signed in with cannot be disabled.', 'safety-pass-by-nuem8' ) ),
+			'approve_self' => array( 'error', __( 'The account you are signed in with cannot approve itself.', 'safety-pass-by-nuem8' ) ),
+			'last'         => array( 'error', __( 'The last administrator who can sign in cannot be disabled.', 'safety-pass-by-nuem8' ) ),
+			'protected'    => array( 'error', __( 'A network administrator cannot be disabled here.', 'safety-pass-by-nuem8' ) ),
+			'held'         => array( 'error', __( 'That account is not on the expected list yet. Approve it first.', 'safety-pass-by-nuem8' ) ),
+			'unchanged'    => array( 'error', __( 'That account is already expected.', 'safety-pass-by-nuem8' ) ),
+			'invalid'      => array( 'error', __( 'That account is not an administrator, so it was left unchanged.', 'safety-pass-by-nuem8' ) ),
 		);
 
 		if ( ! isset( $messages[ $result ] ) ) {
@@ -430,20 +430,20 @@ class NueM8_Safety_Pass_Admin {
 	 * @return string
 	 */
 	private static function state_label( array $account ) {
-		return ! empty( $account['disabled'] ) ? __( 'Disabled', 'nuem8-safety-pass' ) : __( 'Active', 'nuem8-safety-pass' );
+		return ! empty( $account['disabled'] ) ? __( 'Disabled', 'safety-pass-by-nuem8' ) : __( 'Active', 'safety-pass-by-nuem8' );
 	}
 
 	/**
 	 * @param array<string, mixed> $account Administrator row.
 	 */
 	private static function render_approve_form( array $account ) {
-		$confirm = __( 'Approve this administrator? They will be able to sign in.', 'nuem8-safety-pass' );
+		$confirm = __( 'Approve this administrator? They will be able to sign in.', 'safety-pass-by-nuem8' );
 
 		echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '" class="safety-pass__access">';
 		wp_nonce_field( 'nuem8_safety_pass_approve_admin' );
 		echo '<input type="hidden" name="action" value="nuem8_safety_pass_approve_admin" />';
 		echo '<input type="hidden" name="user_id" value="' . esc_attr( (string) $account['id'] ) . '" />';
-		echo '<button type="submit" class="button button-primary" onclick="return confirm(' . esc_attr( wp_json_encode( $confirm ) ) . ');">' . esc_html__( 'Approve', 'nuem8-safety-pass' ) . '</button>';
+		echo '<button type="submit" class="button button-primary" onclick="return confirm(' . esc_attr( wp_json_encode( $confirm ) ) . ');">' . esc_html__( 'Approve', 'safety-pass-by-nuem8' ) . '</button>';
 		echo '</form>';
 	}
 
@@ -455,12 +455,12 @@ class NueM8_Safety_Pass_Admin {
 		$is_self  = (int) $account['id'] === (int) get_current_user_id();
 
 		if ( ! empty( $account['is_super'] ) && ! $disabled ) {
-			echo '<span class="safety-pass__meta">' . esc_html__( 'Network administrator. This account cannot be disabled here.', 'nuem8-safety-pass' ) . '</span>';
+			echo '<span class="safety-pass__meta">' . esc_html__( 'Network administrator. This account cannot be disabled here.', 'safety-pass-by-nuem8' ) . '</span>';
 			return;
 		}
 
 		if ( ! $disabled && $is_self ) {
-			echo '<span class="safety-pass__meta">' . esc_html__( 'Signed in now. This account cannot be disabled.', 'nuem8-safety-pass' ) . '</span>';
+			echo '<span class="safety-pass__meta">' . esc_html__( 'Signed in now. This account cannot be disabled.', 'safety-pass-by-nuem8' ) . '</span>';
 			return;
 		}
 
@@ -473,11 +473,11 @@ class NueM8_Safety_Pass_Admin {
 		echo '<input type="hidden" name="mode" value="' . esc_attr( $mode ) . '" />';
 
 		if ( 'disable' === $mode ) {
-			$confirm = __( 'Disable this administrator? They will be signed out and cannot sign in until you enable them.', 'nuem8-safety-pass' );
-			echo '<button type="submit" class="button button-secondary" onclick="return confirm(' . esc_attr( wp_json_encode( $confirm ) ) . ');">' . esc_html__( 'Disable', 'nuem8-safety-pass' ) . '</button>';
+			$confirm = __( 'Disable this administrator? They will be signed out and cannot sign in until you enable them.', 'safety-pass-by-nuem8' );
+			echo '<button type="submit" class="button button-secondary" onclick="return confirm(' . esc_attr( wp_json_encode( $confirm ) ) . ');">' . esc_html__( 'Disable', 'safety-pass-by-nuem8' ) . '</button>';
 		} else {
 			submit_button(
-				__( 'Enable', 'nuem8-safety-pass' ),
+				__( 'Enable', 'safety-pass-by-nuem8' ),
 				'secondary',
 				'submit',
 				false
@@ -493,7 +493,7 @@ class NueM8_Safety_Pass_Admin {
 	 */
 	private static function last_login_label( array $account ) {
 		if ( ! isset( $account['last_login'] ) || '' === (string) $account['last_login'] ) {
-			return __( 'No sign-in recorded yet', 'nuem8-safety-pass' );
+			return __( 'No sign-in recorded yet', 'safety-pass-by-nuem8' );
 		}
 
 		return (string) $account['last_login'];
@@ -505,15 +505,15 @@ class NueM8_Safety_Pass_Admin {
 	private static function tab_definitions() {
 		return array(
 			'wordpress'      => array(
-				'label' => __( 'WordPress', 'nuem8-safety-pass' ),
+				'label' => __( 'WordPress', 'safety-pass-by-nuem8' ),
 				'ids'   => array( 'backup', 'php', 'wordpress', 'core', 'files' ),
 			),
 			'plugins'        => array(
-				'label' => __( 'Plugins', 'nuem8-safety-pass' ),
+				'label' => __( 'Plugins', 'safety-pass-by-nuem8' ),
 				'ids'   => array( 'plugins' ),
 			),
 			'administrators' => array(
-				'label' => __( 'Administrators', 'nuem8-safety-pass' ),
+				'label' => __( 'Administrators', 'safety-pass-by-nuem8' ),
 				'ids'   => array( 'admins' ),
 			),
 		);
@@ -586,7 +586,7 @@ class NueM8_Safety_Pass_Admin {
 	 * @param string                               $active  Active tab slug.
 	 */
 	private static function render_tabs( array $findings, $active ) {
-		echo '<nav class="nav-tab-wrapper safety-pass__tabs" aria-label="' . esc_attr__( 'Safety Pass sections', 'nuem8-safety-pass' ) . '">';
+		echo '<nav class="nav-tab-wrapper safety-pass__tabs" aria-label="' . esc_attr__( 'nuem8-safety-pass sections', 'safety-pass-by-nuem8' ) . '">';
 
 		foreach ( self::tab_definitions() as $slug => $tab ) {
 			$attention = self::tab_attention( $findings, $tab['ids'] );
@@ -695,7 +695,7 @@ class NueM8_Safety_Pass_Admin {
 			if ( $count > 0 ) {
 				return sprintf(
 					/* translators: %d: number of inactive plugins. */
-					_n( '%d unused', '%d unused', $count, 'nuem8-safety-pass' ),
+					_n( '%d unused', '%d unused', $count, 'safety-pass-by-nuem8' ),
 					$count
 				);
 			}
@@ -713,7 +713,7 @@ class NueM8_Safety_Pass_Admin {
 			if ( $count > 0 ) {
 				return sprintf(
 					/* translators: %d: number of new administrators. */
-					_n( '%d new', '%d new', $count, 'nuem8-safety-pass' ),
+					_n( '%d new', '%d new', $count, 'safety-pass-by-nuem8' ),
 					$count
 				);
 			}
@@ -725,36 +725,36 @@ class NueM8_Safety_Pass_Admin {
 
 		if ( 'wordpress' === $id ) {
 			return 65 === (int) $finding['rank']
-				? __( 'Update check', 'nuem8-safety-pass' )
-				: __( 'Core update', 'nuem8-safety-pass' );
+				? __( 'Update check', 'safety-pass-by-nuem8' )
+				: __( 'Core update', 'safety-pass-by-nuem8' );
 		}
 
 		if ( 'core' === $id ) {
 			return 55 === (int) $finding['rank']
-				? __( 'Core files', 'nuem8-safety-pass' )
-				: __( 'Core check', 'nuem8-safety-pass' );
+				? __( 'Core files', 'safety-pass-by-nuem8' )
+				: __( 'Core check', 'safety-pass-by-nuem8' );
 		}
 
 		if ( 'files' === $id ) {
-			return __( 'File notes', 'nuem8-safety-pass' );
+			return __( 'File notes', 'safety-pass-by-nuem8' );
 		}
 
 		if ( 'backup' === $id ) {
 			$rank = (int) $finding['rank'];
 
 			if ( 20 === $rank ) {
-				return __( 'No backup', 'nuem8-safety-pass' );
+				return __( 'No backup', 'safety-pass-by-nuem8' );
 			}
 
 			if ( 40 === $rank ) {
-				return __( 'Backup overdue', 'nuem8-safety-pass' );
+				return __( 'Backup overdue', 'safety-pass-by-nuem8' );
 			}
 
 			if ( 70 === $rank ) {
-				return __( 'Backup this week', 'nuem8-safety-pass' );
+				return __( 'Backup this week', 'safety-pass-by-nuem8' );
 			}
 
-			return __( 'Backup', 'nuem8-safety-pass' );
+			return __( 'Backup', 'safety-pass-by-nuem8' );
 		}
 
 		return self::status_label( (string) $finding['status'] );
@@ -768,20 +768,20 @@ class NueM8_Safety_Pass_Admin {
 	 */
 	private static function gauge_label( $finding_id ) {
 		$labels = array(
-			'php'       => __( 'PHP Version', 'nuem8-safety-pass' ),
-			'wordpress' => __( 'WordPress Version', 'nuem8-safety-pass' ),
-			'plugins'   => __( 'Unused Plugins', 'nuem8-safety-pass' ),
-			'admins'    => __( 'Admin Accounts', 'nuem8-safety-pass' ),
-			'backup'    => __( 'Site Backup', 'nuem8-safety-pass' ),
-			'core'      => __( 'Core Files', 'nuem8-safety-pass' ),
-			'files'     => __( 'File Notes', 'nuem8-safety-pass' ),
+			'php'       => __( 'PHP Version', 'safety-pass-by-nuem8' ),
+			'wordpress' => __( 'WordPress Version', 'safety-pass-by-nuem8' ),
+			'plugins'   => __( 'Unused Plugins', 'safety-pass-by-nuem8' ),
+			'admins'    => __( 'Admin Accounts', 'safety-pass-by-nuem8' ),
+			'backup'    => __( 'Site Backup', 'safety-pass-by-nuem8' ),
+			'core'      => __( 'Core Files', 'safety-pass-by-nuem8' ),
+			'files'     => __( 'File Notes', 'safety-pass-by-nuem8' ),
 		);
 
 		if ( isset( $labels[ $finding_id ] ) ) {
 			return $labels[ $finding_id ];
 		}
 
-		return __( 'Safety Pass', 'nuem8-safety-pass' );
+		return __( 'nuem8-safety-pass', 'safety-pass-by-nuem8' );
 	}
 
 	/**
@@ -830,14 +830,14 @@ class NueM8_Safety_Pass_Admin {
 	 */
 	private static function status_label( $status ) {
 		if ( 'stop' === $status ) {
-			return __( 'Stop', 'nuem8-safety-pass' );
+			return __( 'Stop', 'safety-pass-by-nuem8' );
 		}
 
 		if ( 'look' === $status ) {
-			return __( 'Look', 'nuem8-safety-pass' );
+			return __( 'Look', 'safety-pass-by-nuem8' );
 		}
 
-		return __( 'OK', 'nuem8-safety-pass' );
+		return __( 'OK', 'safety-pass-by-nuem8' );
 	}
 
 	/**

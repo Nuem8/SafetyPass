@@ -1,15 +1,15 @@
 <?php
 /**
- * Plugin Name: Safety Pass by NueM8
- * Plugin URI: https://nuem8.com/wordpress/safety-pass
+ * Plugin Name: NueM8 Safety Pass
+ * Plugin URI: https://nuem8.com/wordpress/nuem8-safety-pass
  * Description: A central health dashboard for WordPress site owners. Instant diagnostic overview of core files, PHP, backups, and your top priority step.
- * Version: 1.0.0
+ * Version: 1.0.1
  * Author: NueM8
  * Author URI: https://nuem8.com
  * Copyright: 2026 NueM8 LLC
  * License: GPL-2.0-or-later
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
- * Text Domain: nuem8-safety-pass
+ * Text Domain: safety-pass-by-nuem8
  * Requires at least: 6.2
  * Requires PHP: 7.4
  *
@@ -20,7 +20,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'NUEM8_SAFETY_PASS_VERSION', '1.0.0' );
+define( 'NUEM8_SAFETY_PASS_VERSION', '1.0.1' );
 define( 'NUEM8_SAFETY_PASS_FILE', __FILE__ );
 define( 'NUEM8_SAFETY_PASS_DIR', plugin_dir_path( __FILE__ ) );
 

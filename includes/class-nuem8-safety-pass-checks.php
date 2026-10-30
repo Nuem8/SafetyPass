@@ -1,6 +1,6 @@
 <?php
 /**
- * Site checks for Safety Pass by NueM8.
+ * Site checks for nuem8-safety-pass by NueM8.
  *
  * @package NueM8_Safety_Pass
  */
@@ -10,7 +10,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Reads the checks on the Safety Pass page.
+ * Reads the checks on the nuem8-safety-pass page.
  */
 class NueM8_Safety_Pass_Checks {
 
@@ -41,7 +41,7 @@ class NueM8_Safety_Pass_Checks {
 	}
 
 	/**
-	 * Safety Pass data is visible to administrators.
+	 * nuem8-safety-pass data is visible to administrators.
 	 *
 	 * A copied capability on a lesser role does not open the report.
 	 *
@@ -86,7 +86,7 @@ class NueM8_Safety_Pass_Checks {
 	/**
 	 * Run the site checks.
 	 *
-	 * Safety Pass Pro listens for the report. The admin screen uses run(), which requires an administrator.
+	 * nuem8-safety-pass Pro listens for the report. The admin screen uses run(), which requires an administrator.
 	 *
 	 * @return array<string, array<string, mixed>>
 	 */
@@ -149,11 +149,11 @@ class NueM8_Safety_Pass_Checks {
 				30,
 				sprintf(
 					/* translators: %s: PHP version number. */
-					__( 'PHP %s', 'nuem8-safety-pass' ),
+					__( 'PHP %s', 'safety-pass-by-nuem8' ),
 					$version
 				),
-				__( 'This PHP version no longer receives security fixes.', 'nuem8-safety-pass' ),
-				__( 'Ask the host to move this site to PHP 8.3 or newer before you update plugins.', 'nuem8-safety-pass' )
+				__( 'This PHP version no longer receives security fixes.', 'safety-pass-by-nuem8' ),
+				__( 'Ask the host to move this site to PHP 8.3 or newer before you update plugins.', 'safety-pass-by-nuem8' )
 			);
 		}
 
@@ -164,11 +164,11 @@ class NueM8_Safety_Pass_Checks {
 				80,
 				sprintf(
 					/* translators: %s: PHP version number. */
-					__( 'PHP %s', 'nuem8-safety-pass' ),
+					__( 'PHP %s', 'safety-pass-by-nuem8' ),
 					$version
 				),
-				__( 'PHP 8.2 still receives security fixes through December 2026.', 'nuem8-safety-pass' ),
-				__( 'Plan a move to PHP 8.3 or newer with the host.', 'nuem8-safety-pass' )
+				__( 'PHP 8.2 still receives security fixes through December 2026.', 'safety-pass-by-nuem8' ),
+				__( 'Plan a move to PHP 8.3 or newer with the host.', 'safety-pass-by-nuem8' )
 			);
 		}
 
@@ -178,10 +178,10 @@ class NueM8_Safety_Pass_Checks {
 			0,
 			sprintf(
 				/* translators: %s: PHP version number. */
-				__( 'PHP %s', 'nuem8-safety-pass' ),
+				__( 'PHP %s', 'safety-pass-by-nuem8' ),
 				$version
 			),
-			__( 'This PHP version still receives security fixes.', 'nuem8-safety-pass' ),
+			__( 'This PHP version still receives security fixes.', 'safety-pass-by-nuem8' ),
 			''
 		);
 	}
@@ -194,7 +194,7 @@ class NueM8_Safety_Pass_Checks {
 		$offered  = self::offered_wordpress_version();
 		$title    = sprintf(
 			/* translators: %s: WordPress version number. */
-			__( 'WordPress %s', 'nuem8-safety-pass' ),
+			__( 'WordPress %s', 'safety-pass-by-nuem8' ),
 			$current
 		);
 
@@ -204,8 +204,8 @@ class NueM8_Safety_Pass_Checks {
 				'look',
 				65,
 				$title,
-				__( 'Safety Pass could not see an update check yet.', 'nuem8-safety-pass' ),
-				__( 'Open Dashboard → Updates and confirm WordPress is current.', 'nuem8-safety-pass' )
+				__( 'nuem8-safety-pass could not see an update check yet.', 'safety-pass-by-nuem8' ),
+				__( 'Open Dashboard → Updates and confirm WordPress is current.', 'safety-pass-by-nuem8' )
 			);
 		}
 
@@ -215,7 +215,7 @@ class NueM8_Safety_Pass_Checks {
 				'ok',
 				0,
 				$title,
-				__( 'No WordPress update is waiting.', 'nuem8-safety-pass' ),
+				__( 'No WordPress update is waiting.', 'safety-pass-by-nuem8' ),
 				''
 			);
 		}
@@ -227,10 +227,10 @@ class NueM8_Safety_Pass_Checks {
 			$title,
 			sprintf(
 				/* translators: %s: newer WordPress version number. */
-				__( 'WordPress %s is ready to install.', 'nuem8-safety-pass' ),
+				__( 'WordPress %s is ready to install.', 'safety-pass-by-nuem8' ),
 				$offered
 			),
-			__( 'Back up the site, then open Dashboard → Updates and update WordPress.', 'nuem8-safety-pass' )
+			__( 'Back up the site, then open Dashboard → Updates and update WordPress.', 'safety-pass-by-nuem8' )
 		);
 	}
 
@@ -303,8 +303,8 @@ class NueM8_Safety_Pass_Checks {
 				'plugins',
 				'ok',
 				0,
-				__( 'Unused plugins', 'nuem8-safety-pass' ),
-				__( 'Every installed plugin is turned on.', 'nuem8-safety-pass' ),
+				__( 'Unused plugins', 'safety-pass-by-nuem8' ),
+				__( 'Every installed plugin is turned on.', 'safety-pass-by-nuem8' ),
 				'',
 				array()
 			);
@@ -314,18 +314,18 @@ class NueM8_Safety_Pass_Checks {
 			'plugins',
 			'look',
 			90,
-			__( 'Unused plugins', 'nuem8-safety-pass' ),
+			__( 'Unused plugins', 'safety-pass-by-nuem8' ),
 			sprintf(
 				/* translators: %d: number of inactive plugins. */
 				_n(
 					'%d plugin is installed and turned off.',
 					'%d plugins are installed and turned off.',
 					count( $unused ),
-					'nuem8-safety-pass'
+					'safety-pass-by-nuem8'
 				),
 				count( $unused )
 			),
-			__( 'Delete plugins you are not using. They stay on the server until you delete them.', 'nuem8-safety-pass' ),
+			__( 'Delete plugins you are not using. They stay on the server until you delete them.', 'safety-pass-by-nuem8' ),
 			$unused
 		);
 	}
@@ -335,9 +335,9 @@ class NueM8_Safety_Pass_Checks {
 	 */
 	private static function administrators() {
 		/**
-		 * Safety Pass Pro disables a new administrator before this list is read.
+		 * nuem8-safety-pass Pro disables a new administrator before this list is read.
 		 *
-		 * That disable-until-approval step is part of Safety Pass Pro. This plugin only reports the account.
+		 * That disable-until-approval step is part of nuem8-safety-pass Pro. This plugin only reports the account.
 		 */
 		do_action( 'nuem8_safety_pass_before_administrators' );
 
@@ -391,21 +391,21 @@ class NueM8_Safety_Pass_Checks {
 			}
 
 			$action = $held > 0
-				? __( 'A new administrator is disabled until a signed-in administrator approves them. If you added the account, approve it. If you did not, leave it disabled or remove it under Users.', 'nuem8-safety-pass' )
-				: __( 'Approve the account if you added it. If you did not, remove it under Users. Safety Pass Pro keeps a new administrator signed out until you approve them.', 'nuem8-safety-pass' );
+				? __( 'A new administrator is disabled until a signed-in administrator approves them. If you added the account, approve it. If you did not, leave it disabled or remove it under Users.', 'safety-pass-by-nuem8' )
+				: __( 'Approve the account if you added it. If you did not, remove it under Users. nuem8-safety-pass Pro keeps a new administrator signed out until you approve them.', 'safety-pass-by-nuem8' );
 
 			return self::finding(
 				'admins',
 				'stop',
 				10,
-				__( 'Administrators', 'nuem8-safety-pass' ),
+				__( 'Administrators', 'safety-pass-by-nuem8' ),
 				sprintf(
 					/* translators: 1: number of new administrators, 2: date the baseline was saved. */
 					_n(
 						'%1$d administrator was added after %2$s.',
 						'%1$d administrators were added after %2$s.',
 						$new,
-						'nuem8-safety-pass'
+						'safety-pass-by-nuem8'
 					),
 					$new,
 					$since
@@ -419,10 +419,10 @@ class NueM8_Safety_Pass_Checks {
 			'admins',
 			'ok',
 			0,
-			__( 'Administrators', 'nuem8-safety-pass' ),
+			__( 'Administrators', 'safety-pass-by-nuem8' ),
 			sprintf(
 				/* translators: %s: date the administrator list was saved. */
-				__( 'Every administrator is on the expected list, saved on %s.', 'nuem8-safety-pass' ),
+				__( 'Every administrator is on the expected list, saved on %s.', 'safety-pass-by-nuem8' ),
 				$since
 			),
 			'',
@@ -486,7 +486,7 @@ class NueM8_Safety_Pass_Checks {
 	/**
 	 * Site administrators, plus network administrators on multisite.
 	 *
-	 * Safety Pass Pro reads this list when it disables a new administrator.
+	 * nuem8-safety-pass Pro reads this list when it disables a new administrator.
 	 *
 	 * @return WP_User[]
 	 */
@@ -590,7 +590,7 @@ class NueM8_Safety_Pass_Checks {
 	}
 
 	/**
-	 * Whether Safety Pass Pro is active and will disable a new administrator until approval.
+	 * Whether nuem8-safety-pass Pro is active and will disable a new administrator until approval.
 	 *
 	 * This plugin does not disable that account. The screen uses the flag to choose its wording.
 	 *
@@ -598,15 +598,15 @@ class NueM8_Safety_Pass_Checks {
 	 */
 	public static function holds_new_admins() {
 		/**
-		 * Whether Safety Pass Pro is disabling a new administrator until approval.
+		 * Whether nuem8-safety-pass Pro is disabling a new administrator until approval.
 		 *
-		 * @param bool $hold Default false. Safety Pass Pro sets this to true.
+		 * @param bool $hold Default false. nuem8-safety-pass Pro sets this to true.
 		 */
 		return (bool) apply_filters( 'nuem8_safety_pass_hold_new_admins', false );
 	}
 
 	/**
-	 * Mark a new administrator as expected. When Safety Pass Pro disabled the account, this lets them sign in.
+	 * Mark a new administrator as expected. When nuem8-safety-pass Pro disabled the account, this lets them sign in.
 	 *
 	 * The new account cannot approve itself.
 	 *
@@ -642,7 +642,7 @@ class NueM8_Safety_Pass_Checks {
 	}
 
 	/**
-	 * A saved expected list is required before Safety Pass Pro can disable a new administrator.
+	 * A saved expected list is required before nuem8-safety-pass Pro can disable a new administrator.
 	 *
 	 * A missing list is created from the current administrators. An unreadable list is left alone.
 	 *
@@ -661,7 +661,7 @@ class NueM8_Safety_Pass_Checks {
 	/**
 	 * Whether this administrator is on the expected list.
 	 *
-	 * Safety Pass Pro leaves an expected account alone.
+	 * nuem8-safety-pass Pro leaves an expected account alone.
 	 *
 	 * @param int $user_id User ID.
 	 * @return bool
@@ -673,7 +673,7 @@ class NueM8_Safety_Pass_Checks {
 	}
 
 	/**
-	 * Whether Safety Pass has disabled this account.
+	 * Whether nuem8-safety-pass has disabled this account.
 	 *
 	 * @param int $user_id User ID.
 	 * @return bool
@@ -764,7 +764,7 @@ class NueM8_Safety_Pass_Checks {
 		if ( $user instanceof WP_User && self::is_disabled( $user->ID ) ) {
 			return new WP_Error(
 				'nuem8_safety_pass_disabled',
-				__( 'This account is disabled. An administrator can enable it in Safety Pass.', 'nuem8-safety-pass' )
+				__( 'This account is disabled. An administrator can enable it in nuem8-safety-pass.', 'safety-pass-by-nuem8' )
 			);
 		}
 
@@ -838,7 +838,7 @@ class NueM8_Safety_Pass_Checks {
 	/**
 	 * Whether someone who can still sign in would remain.
 	 *
-	 * Safety Pass Pro uses this so a new administrator is not disabled when they are the last one who can sign in.
+	 * nuem8-safety-pass Pro uses this so a new administrator is not disabled when they are the last one who can sign in.
 	 *
 	 * @param int $except_user_id Account to ignore. Zero counts every account.
 	 * @return bool
@@ -884,7 +884,7 @@ class NueM8_Safety_Pass_Checks {
 	/**
 	 * End every login session for one user.
 	 *
-	 * Safety Pass Pro calls this after it disables a new administrator.
+	 * nuem8-safety-pass Pro calls this after it disables a new administrator.
 	 *
 	 * @param int $user_id User ID.
 	 */
@@ -1044,13 +1044,13 @@ class NueM8_Safety_Pass_Checks {
 				'backup',
 				'look',
 				50,
-				__( 'Backup', 'nuem8-safety-pass' ),
+				__( 'Backup', 'safety-pass-by-nuem8' ),
 				sprintf(
 					/* translators: %s: backup plugin name. */
-					__( '%s is on, and it has not recorded a backup yet.', 'nuem8-safety-pass' ),
+					__( '%s is on, and it has not recorded a backup yet.', 'safety-pass-by-nuem8' ),
 					$name
 				),
-				__( 'Run one backup and keep the copy somewhere other than this server. Then open Safety Pass again.', 'nuem8-safety-pass' )
+				__( 'Run one backup and keep the copy somewhere other than this server. Then open nuem8-safety-pass again.', 'safety-pass-by-nuem8' )
 			);
 		}
 
@@ -1061,13 +1061,13 @@ class NueM8_Safety_Pass_Checks {
 				'backup',
 				'look',
 				50,
-				__( 'Backup', 'nuem8-safety-pass' ),
+				__( 'Backup', 'safety-pass-by-nuem8' ),
 				sprintf(
 					/* translators: %s: comma-separated backup plugin names. */
-					__( '%s is active. Safety Pass cannot read when it last finished.', 'nuem8-safety-pass' ),
+					__( '%s is active. nuem8-safety-pass cannot read when it last finished.', 'safety-pass-by-nuem8' ),
 					implode( ', ', $unread )
 				),
-				__( 'Open that backup plugin and confirm the last copy is recent before you update anything.', 'nuem8-safety-pass' )
+				__( 'Open that backup plugin and confirm the last copy is recent before you update anything.', 'safety-pass-by-nuem8' )
 			);
 		}
 
@@ -1075,9 +1075,9 @@ class NueM8_Safety_Pass_Checks {
 			'backup',
 			'stop',
 			20,
-			__( 'Backup', 'nuem8-safety-pass' ),
-			__( 'No backup plugin Safety Pass recognizes is turned on.', 'nuem8-safety-pass' ),
-			__( 'Install a backup plugin, run one backup, and keep the copy off this server. UpdraftPlus, BackWPup, and WPvivid are the ones this page can read.', 'nuem8-safety-pass' )
+			__( 'Backup', 'safety-pass-by-nuem8' ),
+			__( 'No backup plugin nuem8-safety-pass recognizes is turned on.', 'safety-pass-by-nuem8' ),
+			__( 'Install a backup plugin, run one backup, and keep the copy off this server. UpdraftPlus, BackWPup, and WPvivid are the ones this page can read.', 'safety-pass-by-nuem8' )
 		);
 	}
 
@@ -1094,7 +1094,7 @@ class NueM8_Safety_Pass_Checks {
 		$days = (int) floor( max( 0, time() - $timestamp ) / DAY_IN_SECONDS );
 		$detail = sprintf(
 			/* translators: 1: backup plugin name, 2: localized date and time. */
-			__( '%1$s last finished a backup on %2$s.', 'nuem8-safety-pass' ),
+			__( '%1$s last finished a backup on %2$s.', 'safety-pass-by-nuem8' ),
 			$name,
 			$when
 		);
@@ -1104,9 +1104,9 @@ class NueM8_Safety_Pass_Checks {
 				'backup',
 				'stop',
 				40,
-				__( 'Backup', 'nuem8-safety-pass' ),
+				__( 'Backup', 'safety-pass-by-nuem8' ),
 				$detail,
-				__( 'Run a new backup before you update anything. The last one is more than 30 days old.', 'nuem8-safety-pass' )
+				__( 'Run a new backup before you update anything. The last one is more than 30 days old.', 'safety-pass-by-nuem8' )
 			);
 		}
 
@@ -1115,9 +1115,9 @@ class NueM8_Safety_Pass_Checks {
 				'backup',
 				'look',
 				70,
-				__( 'Backup', 'nuem8-safety-pass' ),
+				__( 'Backup', 'safety-pass-by-nuem8' ),
 				$detail,
-				__( 'Run a backup this week, before the next plugin or WordPress update.', 'nuem8-safety-pass' )
+				__( 'Run a backup this week, before the next plugin or WordPress update.', 'safety-pass-by-nuem8' )
 			);
 		}
 
@@ -1125,7 +1125,7 @@ class NueM8_Safety_Pass_Checks {
 			'backup',
 			'ok',
 			0,
-			__( 'Backup', 'nuem8-safety-pass' ),
+			__( 'Backup', 'safety-pass-by-nuem8' ),
 			$detail,
 			''
 		);
@@ -1483,8 +1483,8 @@ class NueM8_Safety_Pass_Checks {
 	 */
 	private static function core_finding( array $result ) {
 		$state = isset( $result['state'] ) ? (string) $result['state'] : 'unreachable';
-		$title = __( 'Core files', 'nuem8-safety-pass' );
-		$scope = __( 'Plugins, themes, and uploads are not part of this check.', 'nuem8-safety-pass' );
+		$title = __( 'Core files', 'safety-pass-by-nuem8' );
+		$scope = __( 'Plugins, themes, and uploads are not part of this check.', 'safety-pass-by-nuem8' );
 
 		if ( 'running' === $state ) {
 			return self::finding(
@@ -1492,8 +1492,8 @@ class NueM8_Safety_Pass_Checks {
 				'look',
 				96,
 				$title,
-				__( 'Safety Pass is comparing core files with WordPress.org.', 'nuem8-safety-pass' ),
-				__( 'Open Safety Pass again in a minute and read the result.', 'nuem8-safety-pass' )
+				__( 'nuem8-safety-pass is comparing core files with WordPress.org.', 'safety-pass-by-nuem8' ),
+				__( 'Open nuem8-safety-pass again in a minute and read the result.', 'safety-pass-by-nuem8' )
 			);
 		}
 
@@ -1503,7 +1503,7 @@ class NueM8_Safety_Pass_Checks {
 				'ok',
 				0,
 				$title,
-				__( 'Core files match the official WordPress copy. Safety Pass saves this result for 12 hours.', 'nuem8-safety-pass' ) . ' ' . $scope,
+				__( 'Core files match the official WordPress copy. nuem8-safety-pass saves this result for 12 hours.', 'safety-pass-by-nuem8' ) . ' ' . $scope,
 				''
 			);
 		}
@@ -1523,7 +1523,7 @@ class NueM8_Safety_Pass_Checks {
 		if ( $extra > 0 ) {
 			$items[] = sprintf(
 				/* translators: %d: number of additional files not listed. */
-				_n( '%d more file', '%d more files', $extra, 'nuem8-safety-pass' ),
+				_n( '%d more file', '%d more files', $extra, 'safety-pass-by-nuem8' ),
 				$extra
 			);
 		}
@@ -1542,11 +1542,11 @@ class NueM8_Safety_Pass_Checks {
 						'%d core file does not match the official WordPress copy. A host or a plugin may have changed it. This is not a malware verdict.',
 						'%d core files do not match the official WordPress copy. A host or a plugin may have changed them. This is not a malware verdict.',
 						$total,
-						'nuem8-safety-pass'
+						'safety-pass-by-nuem8'
 					),
 					$total
 				) . ' ' . $scope,
-				__( 'Compare the listed files with a fresh copy of this same WordPress version. Safety Pass will not replace them.', 'nuem8-safety-pass' ),
+				__( 'Compare the listed files with a fresh copy of this same WordPress version. nuem8-safety-pass will not replace them.', 'safety-pass-by-nuem8' ),
 				$items
 			);
 		}
@@ -1560,14 +1560,14 @@ class NueM8_Safety_Pass_Checks {
 				sprintf(
 					/* translators: %d: number of core files that could not be read. */
 					_n(
-						'Safety Pass could not read %d core file.',
-						'Safety Pass could not read %d core files.',
+						'nuem8-safety-pass could not read %d core file.',
+						'nuem8-safety-pass could not read %d core files.',
 						$total,
-						'nuem8-safety-pass'
+						'safety-pass-by-nuem8'
 					),
 					$total
 				) . ' ' . $scope,
-				__( 'Ask the host to confirm WordPress can read its own core files.', 'nuem8-safety-pass' ),
+				__( 'Ask the host to confirm WordPress can read its own core files.', 'safety-pass-by-nuem8' ),
 				$items
 			);
 		}
@@ -1577,8 +1577,8 @@ class NueM8_Safety_Pass_Checks {
 			'look',
 			66,
 			$title,
-			__( 'Safety Pass could not download the official file list from WordPress.org.', 'nuem8-safety-pass' ) . ' ' . $scope,
-			__( 'Open Safety Pass again later. The update screen under Dashboard still shows whether WordPress itself is current.', 'nuem8-safety-pass' )
+			__( 'nuem8-safety-pass could not download the official file list from WordPress.org.', 'safety-pass-by-nuem8' ) . ' ' . $scope,
+			__( 'Open nuem8-safety-pass again later. The update screen under Dashboard still shows whether WordPress itself is current.', 'safety-pass-by-nuem8' )
 		);
 	}
 
@@ -1652,33 +1652,33 @@ class NueM8_Safety_Pass_Checks {
 		if ( array() !== $mu ) {
 			$items[] = sprintf(
 				/* translators: %s: comma-separated must-use plugin names. */
-				__( 'Always on: %s. These must-use plugins stay active.', 'nuem8-safety-pass' ),
+				__( 'Always on: %s. These must-use plugins stay active.', 'safety-pass-by-nuem8' ),
 				implode( ', ', $mu )
 			);
 		}
 
 		if ( ! self::file_editor_disabled() ) {
-			$items[] = __( 'The theme and plugin editor is turned on.', 'nuem8-safety-pass' );
+			$items[] = __( 'The theme and plugin editor is turned on.', 'safety-pass-by-nuem8' );
 		}
 
 		if ( 'prepend' === $htaccess ) {
-			$items[] = __( '.htaccess tells PHP to load another file first.', 'nuem8-safety-pass' );
+			$items[] = __( '.htaccess tells PHP to load another file first.', 'safety-pass-by-nuem8' );
 		} elseif ( 'unreadable' === $htaccess ) {
-			$items[] = __( 'Safety Pass could not read .htaccess.', 'nuem8-safety-pass' );
+			$items[] = __( 'nuem8-safety-pass could not read .htaccess.', 'safety-pass-by-nuem8' );
 		} elseif ( 'large' === $htaccess ) {
-			$items[] = __( '.htaccess is too large for Safety Pass to read.', 'nuem8-safety-pass' );
+			$items[] = __( '.htaccess is too large for nuem8-safety-pass to read.', 'safety-pass-by-nuem8' );
 		}
 
 		if ( array() === $items ) {
 			$detail = ( 'absent' === $htaccess )
-				? __( 'No must-use plugins are installed, and the theme and plugin editor is off. This site has no .htaccess file in the WordPress folder.', 'nuem8-safety-pass' )
-				: __( 'No must-use plugins are installed, the theme and plugin editor is off, and .htaccess does not load another PHP file first.', 'nuem8-safety-pass' );
+				? __( 'No must-use plugins are installed, and the theme and plugin editor is off. This site has no .htaccess file in the WordPress folder.', 'safety-pass-by-nuem8' )
+				: __( 'No must-use plugins are installed, the theme and plugin editor is off, and .htaccess does not load another PHP file first.', 'safety-pass-by-nuem8' );
 
 			return self::finding(
 				'files',
 				'ok',
 				0,
-				__( 'File notes', 'nuem8-safety-pass' ),
+				__( 'File notes', 'safety-pass-by-nuem8' ),
 				$detail,
 				''
 			);
@@ -1688,9 +1688,9 @@ class NueM8_Safety_Pass_Checks {
 			'files',
 			'look',
 			95,
-			__( 'File notes', 'nuem8-safety-pass' ),
-			__( 'These are notes for you to confirm. They are not a malware verdict.', 'nuem8-safety-pass' ),
-			__( 'Confirm each note. Safety Pass will not change these files.', 'nuem8-safety-pass' ),
+			__( 'File notes', 'safety-pass-by-nuem8' ),
+			__( 'These are notes for you to confirm. They are not a malware verdict.', 'safety-pass-by-nuem8' ),
+			__( 'Confirm each note. nuem8-safety-pass will not change these files.', 'safety-pass-by-nuem8' ),
 			$items
 		);
 	}
@@ -1809,7 +1809,7 @@ class NueM8_Safety_Pass_Checks {
 	 * @param string   $status ok, look, or stop.
 	 * @param int      $rank Lower numbers are more urgent.
 	 * @param string   $title Short label.
-	 * @param string   $detail What Safety Pass found.
+	 * @param string   $detail What nuem8-safety-pass found.
 	 * @param string   $action The one thing to do. Empty when status is ok.
 	 * @param array    $items Extra rows for the admin screen.
 	 * @return array<string, mixed>

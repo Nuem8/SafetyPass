@@ -1,6 +1,6 @@
 <?php
 /**
- * Remove Safety Pass options when the plugin is deleted.
+ * Remove nuem8-safety-pass options when the plugin is deleted.
  *
  * @package NueM8_Safety_Pass
  */

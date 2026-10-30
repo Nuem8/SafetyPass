@@ -1,4 +1,4 @@
-Safety Pass by NueM8
+NueM8 Safety Pass
 Copyright (C) 2026 NueM8 LLC
 
 This program is free software; you can redistribute it and/or modify
