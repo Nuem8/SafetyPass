@@ -72,6 +72,30 @@ class NueM8_Safety_Pass_Admin {
 			$script_ver,
 			true
 		);
+
+		$updates     = NUEM8_SAFETY_PASS_DIR . 'assets/admin.js';
+		$updates_ver = file_exists( $updates ) ? (string) filemtime( $updates ) : NUEM8_SAFETY_PASS_VERSION;
+
+		wp_enqueue_script(
+			'nuem8-safety-pass-updates',
+			plugins_url( 'assets/admin.js', NUEM8_SAFETY_PASS_FILE ),
+			array(),
+			$updates_ver,
+			true
+		);
+
+		wp_localize_script(
+			'nuem8-safety-pass-updates',
+			'nuem8SafetyPassUpdates',
+			array(
+				'updating'      => __( 'Updating', 'safety-pass-by-nuem8' ),
+				'tabUrl'        => self::tab_url( 'plugins' ),
+				'ajaxUrl'       => admin_url( 'admin-ajax.php' ),
+				'updatesNonce'  => wp_create_nonce( 'updates' ),
+				'backupWarning' => __( 'It is best practice to back up your site before you install an update. A backup is a saved copy of your site. You can put that copy back if something goes wrong. Choose OK to install. Choose Cancel to stop.', 'safety-pass-by-nuem8' ),
+				'failed'        => __( 'The update did not install. Nothing was changed.', 'safety-pass-by-nuem8' ),
+			)
+		);
 	}
 
 	/**
@@ -146,6 +170,58 @@ class NueM8_Safety_Pass_Admin {
 	}
 
 	/**
+	 * Install plugin updates that WordPress has already found.
+	 *
+	 * Turned-off plugins are left alone. WordPress itself is not updated.
+	 */
+	public static function update_plugins() {
+		if ( ! NueM8_Safety_Pass_Checks::current_user_can_view() || ! current_user_can( 'update_plugins' ) ) {
+			self::deny( __( 'Only an administrator can update plugins from nuem8-safety-pass.', 'safety-pass-by-nuem8' ) );
+		}
+
+		check_admin_referer( 'nuem8_safety_pass_update_plugins' );
+
+		$update_all = isset( $_POST['update_all'] ) && ! is_array( $_POST['update_all'] ) && '1' === sanitize_text_field( wp_unslash( $_POST['update_all'] ) );
+		$allowed    = NueM8_Safety_Pass_Checks::updatable_plugins();
+
+		if ( $update_all ) {
+			$files = array_keys( $allowed );
+		} else {
+			$plugin = '';
+
+			if ( isset( $_POST['plugin'] ) && ! is_array( $_POST['plugin'] ) ) {
+				$plugin = plugin_basename( sanitize_text_field( wp_unslash( $_POST['plugin'] ) ) );
+			}
+
+			$files = ( '' !== $plugin && isset( $allowed[ $plugin ] ) ) ? array( $plugin ) : array();
+		}
+
+		if ( array() === $files ) {
+			self::redirect_plugins( array( 'plugins_skipped' => '1' ) );
+		}
+
+		require_once ABSPATH . 'wp-admin/includes/file.php';
+
+		if ( 'direct' !== get_filesystem_method( array(), WP_PLUGIN_DIR ) ) {
+			self::redirect_core_plugin_update( $files );
+		}
+
+		$counts = self::install_plugin_updates( $files );
+
+		$args = array();
+
+		if ( $counts['updated'] > 0 ) {
+			$args['plugins_updated'] = (string) $counts['updated'];
+		}
+
+		if ( $counts['failed'] > 0 ) {
+			$args['plugins_failed'] = (string) $counts['failed'];
+		}
+
+		self::redirect_plugins( $args );
+	}
+
+	/**
 	 * Print the page.
 	 */
 	public static function render() {
@@ -161,8 +237,8 @@ class NueM8_Safety_Pass_Admin {
 		echo '<div class="wrap safety-pass">';
 		echo '<h1>' . esc_html__( 'NueM8 Safety Pass', 'safety-pass-by-nuem8' ) . '</h1>';
 		$intro = NueM8_Safety_Pass_Checks::holds_new_admins()
-			? __( 'A note on a tab title means that part needs a look. nuem8-safety-pass does not update, delete, or back up the site. nuem8-safety-pass Pro disables a new administrator until a signed-in administrator approves them. The account you are signed in with cannot be disabled.', 'safety-pass-by-nuem8' )
-			: __( 'A note on a tab title means that part needs a look. nuem8-safety-pass does not update, delete, or back up the site. A new administrator is listed here until you approve them. nuem8-safety-pass Pro keeps that account signed out until then. The account you are signed in with cannot be disabled.', 'safety-pass-by-nuem8' );
+			? __( 'A note on a tab title means that part needs a look. nuem8-safety-pass does not update WordPress, delete plugins, or run a backup. Update installs a plugin update that is already waiting. A new administrator is disabled until a signed-in administrator approves them. The account you are signed in with cannot be disabled.', 'safety-pass-by-nuem8' )
+			: __( 'A note on a tab title means that part needs a look. nuem8-safety-pass does not update WordPress, delete plugins, or run a backup. Update installs a plugin update that is already waiting. A new administrator is listed here until you approve them. The account you are signed in with cannot be disabled.', 'safety-pass-by-nuem8' );
 
 		echo '<p class="safety-pass__intro">' . esc_html( $intro ) . '</p>';
 
@@ -175,6 +251,7 @@ class NueM8_Safety_Pass_Admin {
 		}
 
 		self::render_access_notice();
+		self::render_plugin_update_notice();
 
 		self::render_next( $next );
 		self::render_tabs( $findings, $active );
@@ -190,10 +267,11 @@ class NueM8_Safety_Pass_Admin {
 
 		echo '</ol>';
 		self::render_break_in();
+		NueM8_Safety_Pass_Mail::render();
 		echo '<p class="safety-pass__foot"><a href="' . esc_url( 'https://nuem8.com/wordpress/nuem8-safety-pass' ) . '">' . esc_html__( 'NueM8 Safety Pass', 'safety-pass-by-nuem8' ) . '</a><br>' . esc_html__( '© 2026 NueM8 LLC', 'safety-pass-by-nuem8' ) . '</p>';
 
 		/**
-		 * Extra blocks on the nuem8-safety-pass screen. nuem8-safety-pass Pro prints its email settings here.
+		 * Extra blocks on the nuem8-safety-pass screen.
 		 */
 		do_action( 'nuem8_safety_pass_admin_page' );
 
@@ -271,7 +349,15 @@ class NueM8_Safety_Pass_Admin {
 			echo '<p class="safety-pass__do">' . esc_html( (string) $finding['action'] ) . '</p>';
 		}
 
-		if ( in_array( (string) $finding['id'], array( 'plugins', 'core', 'files' ), true ) && array() !== $items ) {
+		if ( 'plugin_updates' === $finding['id'] && array() !== $items ) {
+			self::render_plugin_updates( $items );
+		}
+
+		if ( 'plugins' === $finding['id'] && array() !== $items ) {
+			self::render_unused_plugins( $items );
+		}
+
+		if ( in_array( (string) $finding['id'], array( 'core', 'files' ), true ) && array() !== $items ) {
 			$names = array();
 
 			foreach ( $items as $name ) {
@@ -307,6 +393,235 @@ class NueM8_Safety_Pass_Admin {
 		}
 
 		echo '</div></li>';
+	}
+
+	/**
+	 * Names and Update buttons for plugins that are turned on.
+	 *
+	 * @param array<int, mixed> $items Plugin rows from the check.
+	 */
+	private static function render_plugin_updates( array $items ) {
+		$rows = array();
+
+		foreach ( $items as $item ) {
+			if ( ! is_array( $item ) || empty( $item['file'] ) || empty( $item['name'] ) ) {
+				continue;
+			}
+
+			$file = plugin_basename( (string) $item['file'] );
+
+			if ( '' === $file ) {
+				continue;
+			}
+
+			$rows[] = array(
+				'file'    => $file,
+				'name'    => self::plain( $item['name'] ),
+				'slug'    => isset( $item['slug'] ) ? sanitize_key( (string) $item['slug'] ) : '',
+				'version' => isset( $item['version'] ) ? self::plain( $item['version'] ) : '',
+				'offered' => isset( $item['offered'] ) ? self::plain( $item['offered'] ) : '',
+			);
+		}
+
+		if ( array() === $rows ) {
+			return;
+		}
+
+		$can     = current_user_can( 'update_plugins' );
+		$columns = array(
+			__( 'Name', 'safety-pass-by-nuem8' ),
+			__( 'Installed', 'safety-pass-by-nuem8' ),
+			__( 'Available', 'safety-pass-by-nuem8' ),
+			__( 'Status', 'safety-pass-by-nuem8' ),
+			__( 'Actions', 'safety-pass-by-nuem8' ),
+		);
+
+		echo '<div class="safety-pass__table-wrap">';
+		echo '<table class="safety-pass__table">';
+		echo '<caption class="screen-reader-text">' . esc_html__( 'Plugin updates', 'safety-pass-by-nuem8' ) . '</caption>';
+		echo '<thead><tr>';
+
+		foreach ( $columns as $column ) {
+			echo '<th scope="col">' . esc_html( $column ) . '</th>';
+		}
+
+		echo '</tr></thead><tbody>';
+
+		foreach ( $rows as $row ) {
+			echo '<tr>';
+			echo '<th scope="row">' . esc_html( $row['name'] ) . '</th>';
+			echo '<td>' . esc_html( self::plugin_version_label( $row['version'] ) ) . '</td>';
+			echo '<td>' . esc_html( self::plugin_version_label( $row['offered'] ) ) . '</td>';
+			echo '<td><span class="safety-pass__state safety-pass__state--look">' . esc_html__( 'Update waiting', 'safety-pass-by-nuem8' ) . '</span></td>';
+			echo '<td>';
+
+			if ( $can ) {
+				$class = 1 === count( $rows ) ? 'button button-primary' : 'button button-secondary';
+
+				echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '" class="safety-pass__update safety-pass__access">';
+				wp_nonce_field( 'nuem8_safety_pass_update_plugins' );
+				echo '<input type="hidden" name="action" value="nuem8_safety_pass_update_plugins" />';
+				echo '<input type="hidden" name="plugin" value="' . esc_attr( $row['file'] ) . '" />';
+				echo '<input type="hidden" name="slug" value="' . esc_attr( $row['slug'] ) . '" />';
+				echo '<button type="submit" class="' . esc_attr( $class ) . '" data-label="' . esc_attr__( 'Update', 'safety-pass-by-nuem8' ) . '">' . esc_html__( 'Update', 'safety-pass-by-nuem8' ) . '</button>';
+				echo '</form>';
+			}
+
+			echo '</td></tr>';
+		}
+
+		echo '</tbody>';
+
+		if ( $can && count( $rows ) > 1 ) {
+			echo '<tfoot><tr><td colspan="4"></td><td>';
+			echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '" class="safety-pass__update safety-pass__update-all">';
+			wp_nonce_field( 'nuem8_safety_pass_update_plugins' );
+			echo '<input type="hidden" name="action" value="nuem8_safety_pass_update_plugins" />';
+			echo '<input type="hidden" name="update_all" value="1" />';
+			echo '<button type="submit" class="button button-primary" data-label="' . esc_attr__( 'Update all', 'safety-pass-by-nuem8' ) . '">' . esc_html__( 'Update all', 'safety-pass-by-nuem8' ) . '</button>';
+			echo '</form>';
+			echo '</td></tr></tfoot>';
+		}
+
+		echo '</table></div>';
+	}
+
+	/**
+	 * @param string $version Version number, possibly empty.
+	 * @return string
+	 */
+	private static function plugin_version_label( $version ) {
+		$version = trim( (string) $version );
+
+		if ( '' === $version ) {
+			return __( 'Not shown', 'safety-pass-by-nuem8' );
+		}
+
+		return $version;
+	}
+
+	/**
+	 * Plugins that are installed and turned off.
+	 *
+	 * @param array<int, mixed> $items Plugin rows from the check.
+	 */
+	private static function render_unused_plugins( array $items ) {
+		$rows = array();
+
+		foreach ( $items as $item ) {
+			if ( is_array( $item ) && ! empty( $item['name'] ) ) {
+				$rows[] = array(
+					'name'    => self::plain( $item['name'] ),
+					'version' => isset( $item['version'] ) ? self::plain( $item['version'] ) : '',
+				);
+				continue;
+			}
+
+			if ( is_scalar( $item ) && '' !== (string) $item ) {
+				$rows[] = array(
+					'name'    => self::plain( $item ),
+					'version' => '',
+				);
+			}
+		}
+
+		if ( array() === $rows ) {
+			return;
+		}
+
+		$columns = array(
+			__( 'Name', 'safety-pass-by-nuem8' ),
+			__( 'Installed', 'safety-pass-by-nuem8' ),
+			__( 'Status', 'safety-pass-by-nuem8' ),
+		);
+
+		echo '<div class="safety-pass__table-wrap">';
+		echo '<table class="safety-pass__table">';
+		echo '<caption class="screen-reader-text">' . esc_html__( 'Unused plugins', 'safety-pass-by-nuem8' ) . '</caption>';
+		echo '<thead><tr>';
+
+		foreach ( $columns as $column ) {
+			echo '<th scope="col">' . esc_html( $column ) . '</th>';
+		}
+
+		echo '</tr></thead><tbody>';
+
+		foreach ( $rows as $row ) {
+			echo '<tr>';
+			echo '<th scope="row">' . esc_html( $row['name'] ) . '</th>';
+			echo '<td>' . esc_html( self::plugin_version_label( $row['version'] ) ) . '</td>';
+			echo '<td><span class="safety-pass__state safety-pass__state--disabled">' . esc_html__( 'Turned off', 'safety-pass-by-nuem8' ) . '</span></td>';
+			echo '</tr>';
+		}
+
+		echo '</tbody></table></div>';
+	}
+
+	/**
+	 * Result of an Update button.
+	 */
+	private static function render_plugin_update_notice() {
+		if ( '1' === self::query_flag( 'plugins_skipped' ) ) {
+			echo '<div class="notice notice-error is-dismissible"><p>' . esc_html__( 'No turned-on plugin with an update waiting was selected, so nothing was changed.', 'safety-pass-by-nuem8' ) . '</p></div>';
+			return;
+		}
+
+		$updated = absint( self::query_flag( 'plugins_updated' ) );
+		$failed  = absint( self::query_flag( 'plugins_failed' ) );
+
+		if ( 0 === $updated && 0 === $failed ) {
+			return;
+		}
+
+		if ( $updated > 0 && 0 === $failed ) {
+			echo '<div class="notice notice-success is-dismissible"><p>' . esc_html(
+				sprintf(
+					/* translators: %d: number of plugins updated. */
+					_n(
+						'%d plugin is updated.',
+						'%d plugins are updated.',
+						$updated,
+						'safety-pass-by-nuem8'
+					),
+					$updated
+				)
+			) . '</p></div>';
+			return;
+		}
+
+		if ( 0 === $updated ) {
+			echo '<div class="notice notice-error is-dismissible"><p>' . esc_html(
+				sprintf(
+					/* translators: %d: number of plugins that could not be updated. */
+					_n(
+						'%d plugin could not be updated. Open Plugins and try it again.',
+						'%d plugins could not be updated. Open Plugins and try them again.',
+						$failed,
+						'safety-pass-by-nuem8'
+					),
+					$failed
+				)
+			) . '</p></div>';
+			return;
+		}
+
+		$updated_text = sprintf(
+			/* translators: %d: number of plugins updated. */
+			_n( '%d plugin is updated.', '%d plugins are updated.', $updated, 'safety-pass-by-nuem8' ),
+			$updated
+		);
+		$failed_text = sprintf(
+			/* translators: %d: number of plugins that could not be updated. */
+			_n(
+				'%d could not be updated. Open Plugins and try that one again.',
+				'%d could not be updated. Open Plugins and try those again.',
+				$failed,
+				'safety-pass-by-nuem8'
+			),
+			$failed
+		);
+
+		echo '<div class="notice notice-warning is-dismissible"><p>' . esc_html( $updated_text . ' ' . $failed_text ) . '</p></div>';
 	}
 
 	/**
@@ -386,8 +701,8 @@ class NueM8_Safety_Pass_Admin {
 
 		echo '</tbody></table></div>';
 		$admin_note = NueM8_Safety_Pass_Checks::holds_new_admins()
-			? __( 'Sign-in times start while nuem8-safety-pass is active. An administrator who is already signed in keeps that session time. nuem8-safety-pass Pro keeps a new administrator signed out until Approve is clicked.', 'safety-pass-by-nuem8' )
-			: __( 'Sign-in times start while nuem8-safety-pass is active. An administrator who is already signed in keeps that session time. Approve adds a new administrator to the expected list. nuem8-safety-pass Pro keeps that account signed out until you approve it.', 'safety-pass-by-nuem8' );
+			? __( 'Sign-in times start while nuem8-safety-pass is active. An administrator who is already signed in keeps that session time. A new administrator stays signed out until Approve is clicked.', 'safety-pass-by-nuem8' )
+			: __( 'Sign-in times start while nuem8-safety-pass is active. An administrator who is already signed in keeps that session time. Approve adds a new administrator to the expected list. This plugin does not block that sign-in.', 'safety-pass-by-nuem8' );
 
 		echo '<p class="safety-pass__meta">' . esc_html( $admin_note ) . '</p>';
 	}
@@ -510,7 +825,7 @@ class NueM8_Safety_Pass_Admin {
 			),
 			'plugins'        => array(
 				'label' => __( 'Plugins', 'safety-pass-by-nuem8' ),
-				'ids'   => array( 'plugins' ),
+				'ids'   => array( 'plugin_updates', 'plugins' ),
 			),
 			'administrators' => array(
 				'label' => __( 'Administrators', 'safety-pass-by-nuem8' ),
@@ -689,6 +1004,20 @@ class NueM8_Safety_Pass_Admin {
 	private static function attention_text( array $finding ) {
 		$id = (string) $finding['id'];
 
+		if ( 'plugin_updates' === $id ) {
+			$count = count( (array) $finding['items'] );
+
+			if ( $count > 0 ) {
+				return sprintf(
+					/* translators: %d: number of active plugins with an update waiting. */
+					_n( '%d to update', '%d to update', $count, 'safety-pass-by-nuem8' ),
+					$count
+				);
+			}
+
+			return __( 'Update check', 'safety-pass-by-nuem8' );
+		}
+
 		if ( 'plugins' === $id ) {
 			$count = count( (array) $finding['items'] );
 
@@ -768,13 +1097,14 @@ class NueM8_Safety_Pass_Admin {
 	 */
 	private static function gauge_label( $finding_id ) {
 		$labels = array(
-			'php'       => __( 'PHP Version', 'safety-pass-by-nuem8' ),
-			'wordpress' => __( 'WordPress Version', 'safety-pass-by-nuem8' ),
-			'plugins'   => __( 'Unused Plugins', 'safety-pass-by-nuem8' ),
-			'admins'    => __( 'Admin Accounts', 'safety-pass-by-nuem8' ),
-			'backup'    => __( 'Site Backup', 'safety-pass-by-nuem8' ),
-			'core'      => __( 'Core Files', 'safety-pass-by-nuem8' ),
-			'files'     => __( 'File Notes', 'safety-pass-by-nuem8' ),
+			'php'            => __( 'PHP Version', 'safety-pass-by-nuem8' ),
+			'wordpress'      => __( 'WordPress Version', 'safety-pass-by-nuem8' ),
+			'plugin_updates' => __( 'Plugin Updates', 'safety-pass-by-nuem8' ),
+			'plugins'        => __( 'Unused Plugins', 'safety-pass-by-nuem8' ),
+			'admins'         => __( 'Admin Accounts', 'safety-pass-by-nuem8' ),
+			'backup'         => __( 'Site Backup', 'safety-pass-by-nuem8' ),
+			'core'           => __( 'Core Files', 'safety-pass-by-nuem8' ),
+			'files'          => __( 'File Notes', 'safety-pass-by-nuem8' ),
 		);
 
 		if ( isset( $labels[ $finding_id ] ) ) {
@@ -864,6 +1194,113 @@ class NueM8_Safety_Pass_Admin {
 			array(
 				'response' => 403,
 			)
+		);
+	}
+
+	/**
+	 * Send the administrator back to the Plugins tab.
+	 *
+	 * @param array<string, string> $args Query flags.
+	 */
+	private static function redirect_plugins( array $args ) {
+		$args['tab'] = 'plugins';
+
+		wp_safe_redirect(
+			self::with_screen_nonce(
+				add_query_arg(
+					$args,
+					admin_url( 'admin.php?page=nuem8-safety-pass' )
+				)
+			)
+		);
+		exit;
+	}
+
+	/**
+	 * Hosts that need FTP credentials use the WordPress update screen.
+	 *
+	 * @param string[] $files Plugin files already checked against the waiting list.
+	 */
+	private static function redirect_core_plugin_update( array $files ) {
+		if ( 1 === count( $files ) ) {
+			$url = add_query_arg(
+				array(
+					'action' => 'upgrade-plugin',
+					'plugin' => $files[0],
+				),
+				self_admin_url( 'update.php' )
+			);
+			$url = wp_nonce_url( $url, 'upgrade-plugin_' . $files[0] );
+		} else {
+			$url = add_query_arg(
+				array(
+					'action'  => 'update-selected',
+					'plugins' => implode( ',', $files ),
+				),
+				self_admin_url( 'update.php' )
+			);
+			$url = wp_nonce_url( $url, 'bulk-update-plugins' );
+		}
+
+		wp_safe_redirect( $url );
+		exit;
+	}
+
+	/**
+	 * Install plugin updates the same way Plugins → Update does.
+	 *
+	 * WordPress refreshes the download, then Plugin_Upgrader installs that package.
+	 *
+	 * @param string[] $files Plugin files already checked against the waiting list.
+	 * @return array{updated: int, failed: int}
+	 */
+	private static function install_plugin_updates( array $files ) {
+		require_once ABSPATH . 'wp-admin/includes/file.php';
+		require_once ABSPATH . 'wp-admin/includes/plugin.php';
+		require_once ABSPATH . 'wp-admin/includes/update.php';
+		require_once ABSPATH . 'wp-admin/includes/class-wp-upgrader.php';
+
+		if ( ! class_exists( 'Plugin_Upgrader' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/class-plugin-upgrader.php';
+		}
+
+		if ( ! class_exists( 'WP_Ajax_Upgrader_Skin' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/class-wp-ajax-upgrader-skin.php';
+		}
+
+		wp_raise_memory_limit( 'admin' );
+
+		if ( function_exists( 'set_time_limit' ) ) {
+			set_time_limit( 300 );
+		}
+
+		wp_update_plugins();
+
+		$updated = 0;
+		$failed  = 0;
+
+		foreach ( $files as $file ) {
+			$file = plugin_basename( $file );
+
+			if ( '' === $file || 0 !== validate_file( $file ) ) {
+				++$failed;
+				continue;
+			}
+
+			$skin     = new WP_Ajax_Upgrader_Skin();
+			$upgrader = new Plugin_Upgrader( $skin );
+			$result   = $upgrader->upgrade( $file );
+
+			if ( true === $result && ! is_wp_error( $skin->result ) ) {
+				++$updated;
+			} else {
+				++$failed;
+			}
+		}
+
+		return array(
+			'updated' => $updated,
+			'failed'  => $failed,
 		);
 	}
 

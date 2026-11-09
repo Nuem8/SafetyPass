@@ -3,7 +3,7 @@
  * Plugin Name: NueM8 Safety Pass
  * Plugin URI: https://nuem8.com/wordpress/nuem8-safety-pass
  * Description: A central health dashboard for WordPress site owners. Instant diagnostic overview of core files, PHP, backups, and your top priority step.
- * Version: 1.0.1
+ * Version: 1.1.0
  * Author: NueM8
  * Author URI: https://nuem8.com
  * Copyright: 2026 NueM8 LLC
@@ -20,12 +20,16 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'NUEM8_SAFETY_PASS_VERSION', '1.0.1' );
+define( 'NUEM8_SAFETY_PASS_VERSION', '1.1.0' );
 define( 'NUEM8_SAFETY_PASS_FILE', __FILE__ );
 define( 'NUEM8_SAFETY_PASS_DIR', plugin_dir_path( __FILE__ ) );
 
 require_once NUEM8_SAFETY_PASS_DIR . 'includes/class-nuem8-safety-pass-checks.php';
+require_once NUEM8_SAFETY_PASS_DIR . 'includes/class-nuem8-safety-pass-hold.php';
+require_once NUEM8_SAFETY_PASS_DIR . 'includes/class-nuem8-safety-pass-mail.php';
 require_once NUEM8_SAFETY_PASS_DIR . 'includes/class-nuem8-safety-pass-admin.php';
+
+NueM8_Safety_Pass_Mail::migrate_legacy_options();
 
 register_activation_hook(
 	__FILE__,
@@ -37,9 +41,43 @@ register_activation_hook(
 	array( 'NueM8_Safety_Pass_Checks', 'grant_view_cap' )
 );
 
+register_activation_hook(
+	__FILE__,
+	array( 'NueM8_Safety_Pass_Mail', 'ensure_cron' )
+);
+
+register_activation_hook(
+	__FILE__,
+	array( 'NueM8_Safety_Pass_Mail', 'arm_prompt' )
+);
+
+register_deactivation_hook(
+	__FILE__,
+	array( 'NueM8_Safety_Pass_Mail', 'deactivate' )
+);
+
 add_action(
 	'admin_init',
 	array( 'NueM8_Safety_Pass_Checks', 'grant_view_cap' )
+);
+
+add_action(
+	'set_user_role',
+	array( 'NueM8_Safety_Pass_Hold', 'on_role_change' ),
+	10,
+	2
+);
+
+add_action(
+	'add_user_role',
+	array( 'NueM8_Safety_Pass_Hold', 'on_role_change' ),
+	10,
+	2
+);
+
+add_action(
+	'nuem8_safety_pass_before_administrators',
+	array( 'NueM8_Safety_Pass_Hold', 'hold_unapproved_admins' )
 );
 
 add_action(
@@ -86,6 +124,66 @@ add_action(
 add_action(
 	'admin_post_nuem8_safety_pass_set_admin_access',
 	array( 'NueM8_Safety_Pass_Admin', 'set_admin_access' )
+);
+
+add_action(
+	'admin_post_nuem8_safety_pass_update_plugins',
+	array( 'NueM8_Safety_Pass_Admin', 'update_plugins' )
+);
+
+add_action(
+	'init',
+	array( 'NueM8_Safety_Pass_Mail', 'ensure_cron' )
+);
+
+add_action(
+	NueM8_Safety_Pass_Mail::CRON_HOOK,
+	array( 'NueM8_Safety_Pass_Mail', 'daily' )
+);
+
+add_action(
+	'wp_mail_failed',
+	array( 'NueM8_Safety_Pass_Mail', 'capture_failure' )
+);
+
+add_action(
+	'nuem8_safety_pass_admin_held',
+	array( 'NueM8_Safety_Pass_Mail', 'send_held_notice' )
+);
+
+add_action(
+	'nuem8_safety_pass_report',
+	array( 'NueM8_Safety_Pass_Mail', 'on_report' )
+);
+
+add_action(
+	'admin_post_nuem8_safety_pass_mail_recipient',
+	array( 'NueM8_Safety_Pass_Mail', 'save_recipient' )
+);
+
+add_action(
+	'admin_post_nuem8_safety_pass_mail_test',
+	array( 'NueM8_Safety_Pass_Mail', 'send_test_request' )
+);
+
+add_action(
+	'admin_post_nuem8_safety_pass_mail_prompt_dismiss',
+	array( 'NueM8_Safety_Pass_Mail', 'dismiss_prompt' )
+);
+
+add_action(
+	'activated_plugin',
+	array( 'NueM8_Safety_Pass_Mail', 'redirect_after_activate' )
+);
+
+add_action(
+	'admin_enqueue_scripts',
+	array( 'NueM8_Safety_Pass_Mail', 'prompt_assets' )
+);
+
+add_action(
+	'admin_footer',
+	array( 'NueM8_Safety_Pass_Mail', 'render_prompt' )
 );
 
 add_filter(

@@ -14,8 +14,19 @@ if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
  */
 function nuem8_safety_pass_uninstall_site() {
 	delete_option( 'nuem8_safety_pass_admins' );
+	delete_option( 'nuem8_safety_pass_mail_recipient' );
+	delete_option( 'nuem8_safety_pass_mail_signature' );
+	delete_option( 'nuem8_safety_pass_mail_held_notified' );
+	delete_option( 'nuem8_safety_pass_mail_last_error' );
+	delete_option( 'nuem8_safety_pass_mail_prompt' );
+	delete_option( 'nuem8_safety_pass_pro_recipient' );
+	delete_option( 'nuem8_safety_pass_pro_signature' );
+	delete_option( 'nuem8_safety_pass_pro_held_notified' );
+	delete_option( 'nuem8_safety_pass_pro_last_error' );
 	delete_transient( 'nuem8_sp_core' );
 	delete_transient( 'nuem8_sp_core_lock' );
+	wp_clear_scheduled_hook( 'nuem8_safety_pass_daily' );
+	wp_clear_scheduled_hook( 'nuem8_safety_pass_pro_daily' );
 
 	$role = get_role( 'administrator' );
 

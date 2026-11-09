@@ -86,19 +86,20 @@ class NueM8_Safety_Pass_Checks {
 	/**
 	 * Run the site checks.
 	 *
-	 * nuem8-safety-pass Pro listens for the report. The admin screen uses run(), which requires an administrator.
+	 * Mail listens for the report. The admin screen uses run(), which requires an administrator.
 	 *
 	 * @return array<string, array<string, mixed>>
 	 */
 	public static function publish_report() {
 		$findings = array(
-			'backup'    => self::backup(),
-			'php'       => self::php_version(),
-			'wordpress' => self::wordpress_version(),
-			'core'      => self::core_files(),
-			'files'     => self::file_notes(),
-			'plugins'   => self::unused_plugins(),
-			'admins'    => self::administrators(),
+			'backup'         => self::backup(),
+			'php'            => self::php_version(),
+			'wordpress'      => self::wordpress_version(),
+			'core'           => self::core_files(),
+			'files'          => self::file_notes(),
+			'plugin_updates' => self::plugin_updates(),
+			'plugins'        => self::unused_plugins(),
+			'admins'         => self::administrators(),
 		);
 
 		/**
@@ -272,9 +273,175 @@ class NueM8_Safety_Pass_Checks {
 	}
 
 	/**
+	 * Turned-on plugins that have an update waiting.
+	 *
+	 * A plugin that is turned off is reported by unused_plugins(), even when an update exists.
+	 *
 	 * @return array<string, mixed>
 	 */
-	private static function unused_plugins() {
+	private static function plugin_updates() {
+		$waiting = self::plugins_awaiting_update();
+
+		if ( null === $waiting ) {
+			return self::finding(
+				'plugin_updates',
+				'look',
+				75,
+				__( 'Plugin updates', 'safety-pass-by-nuem8' ),
+				__( 'nuem8-safety-pass could not see a plugin update check yet.', 'safety-pass-by-nuem8' ),
+				__( 'Open Dashboard → Updates and confirm the turned-on plugins are current.', 'safety-pass-by-nuem8' )
+			);
+		}
+
+		$installed = array();
+
+		foreach ( self::installed_plugin_rows() as $row ) {
+			$installed[ $row['file'] ] = $row['version'];
+		}
+
+		$transient = get_site_transient( 'update_plugins' );
+		$ready     = self::updatable_plugins();
+		$items     = array();
+
+		foreach ( $ready as $file => $name ) {
+			$offered = '';
+
+			if ( is_object( $transient ) && isset( $transient->response[ $file ] ) && is_object( $transient->response[ $file ] ) && ! empty( $transient->response[ $file ]->new_version ) ) {
+				$offered = (string) $transient->response[ $file ]->new_version;
+			}
+
+			$items[] = array(
+				'file'     => $file,
+				'name'     => $name,
+				'slug'     => self::plugin_update_slug( $file ),
+				'version'  => isset( $installed[ $file ] ) ? $installed[ $file ] : '',
+				'offered'  => $offered,
+			);
+		}
+
+		if ( array() === $items ) {
+			return self::finding(
+				'plugin_updates',
+				'ok',
+				0,
+				__( 'Plugin updates', 'safety-pass-by-nuem8' ),
+				__( 'Every turned-on plugin is current.', 'safety-pass-by-nuem8' ),
+				''
+			);
+		}
+
+		return self::finding(
+			'plugin_updates',
+			'look',
+			58,
+			__( 'Plugin updates', 'safety-pass-by-nuem8' ),
+			sprintf(
+				/* translators: %d: number of active plugins with an update waiting. */
+				_n(
+					'%d turned-on plugin has an update waiting.',
+					'%d turned-on plugins have an update waiting.',
+					count( $items ),
+					'safety-pass-by-nuem8'
+				),
+				count( $items )
+			),
+			__( 'Back up the site, then use Update. The button installs only a plugin update that is already waiting.', 'safety-pass-by-nuem8' ),
+			$items
+		);
+	}
+
+	/**
+	 * Turned-on plugins WordPress can update from this page.
+	 *
+	 * The file is the array key. A turned-off plugin is never included.
+	 *
+	 * @return array<string, string>
+	 */
+	public static function updatable_plugins() {
+		$waiting = self::plugins_awaiting_update();
+
+		if ( ! is_array( $waiting ) ) {
+			return array();
+		}
+
+		$plugins = array();
+
+		foreach ( self::installed_plugin_rows() as $row ) {
+			if ( empty( $row['active'] ) || empty( $waiting[ $row['file'] ] ) ) {
+				continue;
+			}
+
+			$plugins[ $row['file'] ] = $row['name'];
+		}
+
+		uasort(
+			$plugins,
+			static function ( $left, $right ) {
+				return strnatcasecmp( $left, $right );
+			}
+		);
+
+		return $plugins;
+	}
+
+	/**
+	 * Slug WordPress uses for the update-plugin routine.
+	 *
+	 * @param string $file Plugin file relative to the plugins directory.
+	 * @return string
+	 */
+	private static function plugin_update_slug( $file ) {
+		$transient = get_site_transient( 'update_plugins' );
+		$slug      = '';
+
+		if ( is_object( $transient ) && isset( $transient->response[ $file ] ) && is_object( $transient->response[ $file ] ) && ! empty( $transient->response[ $file ]->slug ) ) {
+			$slug = sanitize_key( (string) $transient->response[ $file ]->slug );
+		}
+
+		if ( '' === $slug ) {
+			$directory = dirname( $file );
+			$slug      = ( '.' === $directory || '' === $directory ) ? basename( $file, '.php' ) : $directory;
+			$slug      = sanitize_key( $slug );
+		}
+
+		return $slug;
+	}
+
+	/**
+	 * Plugin files WordPress has marked for update.
+	 *
+	 * Null means the update check has not been stored yet.
+	 *
+	 * @return array<string, true>|null
+	 */
+	private static function plugins_awaiting_update() {
+		$transient = get_site_transient( 'update_plugins' );
+
+		if ( ! is_object( $transient ) ) {
+			return null;
+		}
+
+		$waiting = array();
+
+		if ( empty( $transient->response ) || ! is_array( $transient->response ) ) {
+			return $waiting;
+		}
+
+		foreach ( array_keys( $transient->response ) as $file ) {
+			if ( is_string( $file ) && '' !== $file ) {
+				$waiting[ $file ] = true;
+			}
+		}
+
+		return $waiting;
+	}
+
+	/**
+	 * Installed plugins in wp-content/plugins.
+	 *
+	 * @return array<int, array{file: string, name: string, version: string, active: bool}>
+	 */
+	private static function installed_plugin_rows() {
 		if ( ! function_exists( 'get_plugins' ) || ! function_exists( 'is_plugin_active' ) ) {
 			require_once ABSPATH . 'wp-admin/includes/plugin.php';
 		}
@@ -282,21 +449,56 @@ class NueM8_Safety_Pass_Checks {
 		$installed = get_plugins();
 
 		if ( ! is_array( $installed ) ) {
-			$installed = array();
+			return array();
 		}
-		$unused    = array();
+
+		$rows = array();
 
 		foreach ( $installed as $file => $data ) {
-			if ( is_plugin_active( $file ) ) {
+			if ( ! is_string( $file ) || '' === $file ) {
 				continue;
 			}
 
-			$name     = isset( $data['Name'] ) ? (string) $data['Name'] : $file;
-			$unused[] = $name;
+			$name = $file;
+
+			if ( is_array( $data ) && isset( $data['Name'] ) && is_scalar( $data['Name'] ) && '' !== (string) $data['Name'] ) {
+				$name = (string) $data['Name'];
+			}
+
+			$rows[] = array(
+				'file'    => $file,
+				'name'    => $name,
+				'version' => ( is_array( $data ) && isset( $data['Version'] ) && is_scalar( $data['Version'] ) ) ? (string) $data['Version'] : '',
+				'active'  => is_plugin_active( $file ),
+			);
 		}
 
-		natcasesort( $unused );
-		$unused = array_values( $unused );
+		return $rows;
+	}
+
+	/**
+	 * @return array<string, mixed>
+	 */
+	private static function unused_plugins() {
+		$unused = array();
+
+		foreach ( self::installed_plugin_rows() as $row ) {
+			if ( ! empty( $row['active'] ) ) {
+				continue;
+			}
+
+			$unused[] = array(
+				'name'    => $row['name'],
+				'version' => $row['version'],
+			);
+		}
+
+		usort(
+			$unused,
+			static function ( $left, $right ) {
+				return strnatcasecmp( $left['name'], $right['name'] );
+			}
+		);
 
 		if ( array() === $unused ) {
 			return self::finding(
@@ -335,9 +537,7 @@ class NueM8_Safety_Pass_Checks {
 	 */
 	private static function administrators() {
 		/**
-		 * nuem8-safety-pass Pro disables a new administrator before this list is read.
-		 *
-		 * That disable-until-approval step is part of nuem8-safety-pass Pro. This plugin only reports the account.
+		 * Disable a new administrator before this list is read.
 		 */
 		do_action( 'nuem8_safety_pass_before_administrators' );
 
@@ -392,7 +592,7 @@ class NueM8_Safety_Pass_Checks {
 
 			$action = $held > 0
 				? __( 'A new administrator is disabled until a signed-in administrator approves them. If you added the account, approve it. If you did not, leave it disabled or remove it under Users.', 'safety-pass-by-nuem8' )
-				: __( 'Approve the account if you added it. If you did not, remove it under Users. nuem8-safety-pass Pro keeps a new administrator signed out until you approve them.', 'safety-pass-by-nuem8' );
+				: __( 'Approve the account if you added it. If you did not, remove it under Users.', 'safety-pass-by-nuem8' );
 
 			return self::finding(
 				'admins',
@@ -486,7 +686,7 @@ class NueM8_Safety_Pass_Checks {
 	/**
 	 * Site administrators, plus network administrators on multisite.
 	 *
-	 * nuem8-safety-pass Pro reads this list when it disables a new administrator.
+	 * The hold reads this list when it disables a new administrator.
 	 *
 	 * @return WP_User[]
 	 */
@@ -590,23 +790,23 @@ class NueM8_Safety_Pass_Checks {
 	}
 
 	/**
-	 * Whether nuem8-safety-pass Pro is active and will disable a new administrator until approval.
+	 * Whether a new administrator is disabled until approval.
 	 *
-	 * This plugin does not disable that account. The screen uses the flag to choose its wording.
+	 * The screen uses the flag to choose its wording.
 	 *
 	 * @return bool
 	 */
 	public static function holds_new_admins() {
 		/**
-		 * Whether nuem8-safety-pass Pro is disabling a new administrator until approval.
+		 * Whether a new administrator is disabled until approval.
 		 *
-		 * @param bool $hold Default false. nuem8-safety-pass Pro sets this to true.
+		 * @param bool $hold Default true.
 		 */
-		return (bool) apply_filters( 'nuem8_safety_pass_hold_new_admins', false );
+		return (bool) apply_filters( 'nuem8_safety_pass_hold_new_admins', true );
 	}
 
 	/**
-	 * Mark a new administrator as expected. When nuem8-safety-pass Pro disabled the account, this lets them sign in.
+	 * Mark a new administrator as expected. When the account was disabled, this lets them sign in.
 	 *
 	 * The new account cannot approve itself.
 	 *
@@ -642,7 +842,7 @@ class NueM8_Safety_Pass_Checks {
 	}
 
 	/**
-	 * A saved expected list is required before nuem8-safety-pass Pro can disable a new administrator.
+	 * A saved expected list is required before a new administrator can be disabled.
 	 *
 	 * A missing list is created from the current administrators. An unreadable list is left alone.
 	 *
@@ -661,7 +861,7 @@ class NueM8_Safety_Pass_Checks {
 	/**
 	 * Whether this administrator is on the expected list.
 	 *
-	 * nuem8-safety-pass Pro leaves an expected account alone.
+	 * An expected account is left alone.
 	 *
 	 * @param int $user_id User ID.
 	 * @return bool
@@ -838,7 +1038,7 @@ class NueM8_Safety_Pass_Checks {
 	/**
 	 * Whether someone who can still sign in would remain.
 	 *
-	 * nuem8-safety-pass Pro uses this so a new administrator is not disabled when they are the last one who can sign in.
+	 * A new administrator is not disabled when they are the last one who can sign in.
 	 *
 	 * @param int $except_user_id Account to ignore. Zero counts every account.
 	 * @return bool
@@ -884,7 +1084,7 @@ class NueM8_Safety_Pass_Checks {
 	/**
 	 * End every login session for one user.
 	 *
-	 * nuem8-safety-pass Pro calls this after it disables a new administrator.
+	 * Called after a new administrator is disabled.
 	 *
 	 * @param int $user_id User ID.
 	 */
