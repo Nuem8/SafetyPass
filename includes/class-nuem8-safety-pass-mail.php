@@ -23,6 +23,10 @@ class NueM8_Safety_Pass_Mail {
 	const NOTIFIED_OPTION   = 'nuem8_safety_pass_mail_held_notified';
 	const LAST_ERROR_OPTION = 'nuem8_safety_pass_mail_last_error';
 	const PROMPT_OPTION     = 'nuem8_safety_pass_mail_prompt';
+	const WEBHOOK_OPTION    = 'nuem8_safety_pass_webhook_url';
+	const WEBHOOK_SIGNATURE = 'nuem8_safety_pass_webhook_signature';
+	const WEBHOOK_NOTIFIED  = 'nuem8_safety_pass_webhook_held';
+	const WEBHOOK_ERROR     = 'nuem8_safety_pass_webhook_error';
 
 	/**
 	 * Held notices already sent during this request.
@@ -30,6 +34,13 @@ class NueM8_Safety_Pass_Mail {
 	 * @var int
 	 */
 	private static $held_sent = 0;
+
+	/**
+	 * Webhook notices already sent during this request.
+	 *
+	 * @var int
+	 */
+	private static $hook_sent = 0;
 
 	/**
 	 * True while this class is inside wp_mail.
@@ -266,7 +277,13 @@ class NueM8_Safety_Pass_Mail {
 	public static function send_held_notice( $user_id ) {
 		$user_id = (int) $user_id;
 
-		if ( $user_id < 1 || self::$held_sent >= 5 || ! self::can_send() ) {
+		if ( $user_id < 1 ) {
+			return;
+		}
+
+		self::push_held( $user_id );
+
+		if ( self::$held_sent >= 5 || ! self::can_send() ) {
 			return;
 		}
 
@@ -326,6 +343,7 @@ class NueM8_Safety_Pass_Mail {
 	 */
 	public static function forget_signature() {
 		delete_option( self::SIGNATURE_OPTION );
+		delete_option( self::WEBHOOK_SIGNATURE );
 	}
 
 	/**
@@ -423,6 +441,371 @@ class NueM8_Safety_Pass_Mail {
 	}
 
 	/**
+	 * Save the optional webhook URL. An empty field turns the webhook off.
+	 */
+	public static function save_webhook() {
+		if ( ! self::can_manage() ) {
+			self::deny( __( 'Only an administrator can change nuem8-safety-pass.', 'safety-pass-by-nuem8' ) );
+		}
+
+		check_admin_referer( 'nuem8_safety_pass_webhook' );
+
+		$raw = '';
+
+		if ( isset( $_POST['webhook_url'] ) && ! is_array( $_POST['webhook_url'] ) ) {
+			$raw = trim( wp_unslash( (string) $_POST['webhook_url'] ) );
+		}
+
+		if ( '' === $raw ) {
+			delete_option( self::WEBHOOK_OPTION );
+			delete_option( self::WEBHOOK_SIGNATURE );
+			delete_option( self::WEBHOOK_ERROR );
+			self::redirect( 'cleared', 'webhook' );
+		}
+
+		$url = esc_url_raw( $raw );
+
+		if ( ! is_string( $url ) || ! wp_http_validate_url( $url ) ) {
+			self::redirect( 'invalid', 'webhook' );
+		}
+
+		$previous = get_option( self::WEBHOOK_OPTION, '' );
+
+		if ( ! is_string( $previous ) || $previous !== $url ) {
+			delete_option( self::WEBHOOK_SIGNATURE );
+		}
+
+		update_option( self::WEBHOOK_OPTION, $url, false );
+		delete_option( self::WEBHOOK_ERROR );
+		self::redirect( 'saved', 'webhook' );
+	}
+
+	/**
+	 * Post one test message to the saved webhook.
+	 */
+	public static function send_webhook_test_request() {
+		if ( ! self::can_manage() ) {
+			self::deny( __( 'Only an administrator can change nuem8-safety-pass.', 'safety-pass-by-nuem8' ) );
+		}
+
+		check_admin_referer( 'nuem8_safety_pass_webhook_test' );
+
+		$sent = self::post_webhook(
+			'test',
+			sprintf(
+				/* translators: %s: site name. */
+				__( '[%s] Safety Pass test', 'safety-pass-by-nuem8' ),
+				self::site_name()
+			),
+			__( 'This is a test from nuem8-safety-pass. This address will be notified when a check needs a look, and when a new administrator is waiting for approval. The site sends this. It is not sent to NueM8.', 'safety-pass-by-nuem8' )
+		);
+
+		self::redirect( $sent ? 'test_sent' : 'test_failed', 'webhook' );
+	}
+
+	/**
+	 * Webhook field under the email setting.
+	 */
+	private static function render_webhook() {
+		if ( ! self::can_manage() ) {
+			return;
+		}
+
+		$stored = get_option( self::WEBHOOK_OPTION, '' );
+		$stored = is_string( $stored ) ? $stored : '';
+		$url    = self::webhook_url();
+		$error  = get_option( self::WEBHOOK_ERROR, '' );
+
+		echo '<section class="safety-pass-mail">';
+		echo '<h2>' . esc_html__( 'Webhook', 'safety-pass-by-nuem8' ) . '</h2>';
+		echo '<p>' . esc_html__( 'Paste a webhook URL. Safety Pass posts a JSON message to that address when a check needs a look, and when a new administrator is waiting for approval. The site sends it. It is not sent to NueM8. Leave the field empty to keep this off.', 'safety-pass-by-nuem8' ) . '</p>';
+		echo '<p>' . esc_html__( 'The message includes text and content, so a Slack, Discord, or ntfy address can show it. No account or API key is stored here. Use an http or https address WordPress can reach. A private network address is refused.', 'safety-pass-by-nuem8' ) . '</p>';
+
+		self::render_webhook_notice();
+
+		if ( '' !== $stored && '' === $url ) {
+			echo '<div class="notice notice-warning inline"><p>' . esc_html__( 'The saved address can no longer be used. Enter it again or clear it.', 'safety-pass-by-nuem8' ) . '</p></div>';
+		}
+
+		if ( is_string( $error ) && '' !== $error ) {
+			echo '<div class="notice notice-error inline"><p>' . esc_html(
+				sprintf(
+					/* translators: %s: short delivery error. */
+					__( 'The address is saved. The message did not send. %s', 'safety-pass-by-nuem8' ),
+					$error
+				)
+			) . '</p></div>';
+		}
+
+		echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
+		wp_nonce_field( 'nuem8_safety_pass_webhook' );
+		echo '<input type="hidden" name="action" value="nuem8_safety_pass_webhook" />';
+		echo '<label for="nuem8-safety-pass-webhook">' . esc_html__( 'Webhook URL', 'safety-pass-by-nuem8' ) . '</label>';
+		echo '<input type="url" id="nuem8-safety-pass-webhook" name="webhook_url" value="' . esc_attr( $stored ) . '" placeholder="https://" spellcheck="false" autocomplete="off" />';
+		submit_button( __( 'Save', 'safety-pass-by-nuem8' ), 'secondary', 'submit', false );
+		echo '</form>';
+
+		if ( '' !== $url ) {
+			echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '" class="safety-pass-mail__test">';
+			wp_nonce_field( 'nuem8_safety_pass_webhook_test' );
+			echo '<input type="hidden" name="action" value="nuem8_safety_pass_webhook_test" />';
+			submit_button( __( 'Send a test', 'safety-pass-by-nuem8' ), 'secondary', 'submit', false );
+			echo '</form>';
+		}
+
+		echo '</section>';
+	}
+
+	/**
+	 * @param array<string, mixed> $findings Site checks.
+	 */
+	private static function push_attention( array $findings ) {
+		if ( '' === self::webhook_url() ) {
+			return;
+		}
+
+		$signature = self::attention_signature( $findings );
+		$stored    = get_option( self::WEBHOOK_SIGNATURE, null );
+
+		if ( is_string( $stored ) && $signature === $stored ) {
+			return;
+		}
+
+		if ( '' === $signature ) {
+			update_option( self::WEBHOOK_SIGNATURE, '', false );
+			return;
+		}
+
+		$sent = self::post_webhook(
+			'attention',
+			sprintf(
+				/* translators: %s: site name. */
+				__( '[%s] Safety Pass: needs a look', 'safety-pass-by-nuem8' ),
+				self::site_name()
+			),
+			self::attention_body( $findings )
+		);
+
+		if ( $sent ) {
+			update_option( self::WEBHOOK_SIGNATURE, $signature, false );
+		}
+	}
+
+	/**
+	 * @param int $user_id Held user ID.
+	 */
+	private static function push_held( $user_id ) {
+		$user_id = (int) $user_id;
+
+		if ( $user_id < 1 || self::$hook_sent >= 5 || '' === self::webhook_url() ) {
+			return;
+		}
+
+		if ( in_array( $user_id, self::webhook_notified_ids(), true ) || get_transient( 'nuem8_sp_hook_' . $user_id ) ) {
+			return;
+		}
+
+		$user = get_userdata( $user_id );
+
+		if ( ! $user instanceof WP_User ) {
+			return;
+		}
+
+		set_transient( 'nuem8_sp_hook_' . $user_id, '1', 10 * MINUTE_IN_SECONDS );
+
+		$disabled = class_exists( 'NueM8_Safety_Pass_Checks' ) && NueM8_Safety_Pass_Checks::is_disabled( $user_id );
+		$sent     = self::post_webhook(
+			'administrator',
+			sprintf(
+				/* translators: %s: site name. */
+				__( '[%s] Safety Pass: new administrator', 'safety-pass-by-nuem8' ),
+				self::site_name()
+			),
+			$disabled ? self::held_body( $user ) : self::open_admin_body( $user )
+		);
+
+		if ( ! $sent ) {
+			delete_transient( 'nuem8_sp_hook_' . $user_id );
+			return;
+		}
+
+		self::mark_webhook_notified( $user_id );
+		++self::$hook_sent;
+	}
+
+	/**
+	 * Post one JSON message to the saved address.
+	 *
+	 * @param string $event   attention, administrator, or test.
+	 * @param string $subject Short title.
+	 * @param string $body    Plain text notice.
+	 * @return bool
+	 */
+	private static function post_webhook( $event, $subject, $body ) {
+		$url = self::webhook_url();
+
+		if ( '' === $url ) {
+			return false;
+		}
+
+		$message = self::clip( $body, 3500 );
+		$payload = array(
+			'event'   => $event,
+			'site'    => self::site_name(),
+			'home'    => home_url( '/' ),
+			'url'     => admin_url( 'admin.php?page=nuem8-safety-pass' ),
+			'title'   => self::plain( $subject ),
+			'message' => $message,
+			'text'    => $message,
+			'content' => self::clip( $body, 1800 ),
+		);
+		$json    = wp_json_encode( $payload );
+
+		if ( ! is_string( $json ) ) {
+			return false;
+		}
+
+		$response = wp_remote_post(
+			$url,
+			array(
+				'timeout'     => 5,
+				'redirection' => 2,
+				'headers'     => array(
+					'Content-Type' => 'application/json',
+					'User-Agent'   => 'NueM8-Safety-Pass/' . NUEM8_SAFETY_PASS_VERSION,
+				),
+				'body'        => $json,
+			)
+		);
+
+		if ( is_wp_error( $response ) ) {
+			self::remember_webhook_error( $response->get_error_message() );
+			return false;
+		}
+
+		$code = (int) wp_remote_retrieve_response_code( $response );
+
+		if ( $code < 200 || $code > 299 ) {
+			self::remember_webhook_error(
+				sprintf(
+					/* translators: %d: HTTP status code. */
+					__( 'HTTP %d', 'safety-pass-by-nuem8' ),
+					$code
+				)
+			);
+			return false;
+		}
+
+		delete_option( self::WEBHOOK_ERROR );
+		return true;
+	}
+
+	/**
+	 * A saved URL that WordPress will still agree to request.
+	 *
+	 * @return string
+	 */
+	private static function webhook_url() {
+		$stored = get_option( self::WEBHOOK_OPTION, '' );
+
+		if ( ! is_string( $stored ) || '' === $stored ) {
+			return '';
+		}
+
+		$valid = wp_http_validate_url( $stored );
+
+		return is_string( $valid ) ? $valid : '';
+	}
+
+	/**
+	 * @param string $message Error text.
+	 */
+	private static function remember_webhook_error( $message ) {
+		update_option( self::WEBHOOK_ERROR, self::clip( self::plain( $message ), 300 ), false );
+	}
+
+	/**
+	 * @param string $text  Source text.
+	 * @param int    $limit Maximum length.
+	 * @return string
+	 */
+	private static function clip( $text, $limit ) {
+		$text  = (string) $text;
+		$limit = (int) $limit;
+
+		if ( $limit < 1 ) {
+			return '';
+		}
+
+		if ( function_exists( 'mb_strlen' ) && function_exists( 'mb_substr' ) ) {
+			if ( mb_strlen( $text ) <= $limit ) {
+				return $text;
+			}
+
+			return mb_substr( $text, 0, max( 0, $limit - 3 ) ) . '...';
+		}
+
+		if ( strlen( $text ) <= $limit ) {
+			return $text;
+		}
+
+		return substr( $text, 0, max( 0, $limit - 3 ) ) . '...';
+	}
+
+	/**
+	 * Result of saving or testing the webhook.
+	 */
+	private static function render_webhook_notice() {
+		$flag     = self::query_flag( 'webhook' );
+		$messages = array(
+			'saved'       => array( 'success', __( 'The webhook is on.', 'safety-pass-by-nuem8' ) ),
+			'cleared'     => array( 'success', __( 'The webhook is off.', 'safety-pass-by-nuem8' ) ),
+			'invalid'     => array( 'error', __( 'That address cannot be used. Enter an http or https URL that WordPress can reach.', 'safety-pass-by-nuem8' ) ),
+			'test_sent'   => array( 'success', __( 'Test sent to the webhook.', 'safety-pass-by-nuem8' ) ),
+			'test_failed' => array( 'error', __( 'The test did not reach the webhook.', 'safety-pass-by-nuem8' ) ),
+		);
+
+		if ( ! isset( $messages[ $flag ] ) ) {
+			return;
+		}
+
+		echo '<div class="notice notice-' . esc_attr( $messages[ $flag ][0] ) . ' inline is-dismissible"><p>' . esc_html( $messages[ $flag ][1] ) . '</p></div>';
+	}
+
+	/**
+	 * @return int[]
+	 */
+	private static function webhook_notified_ids() {
+		$stored = get_option( self::WEBHOOK_NOTIFIED, array() );
+		$ids    = array();
+
+		foreach ( (array) $stored as $id ) {
+			$id = (int) $id;
+
+			if ( $id > 0 ) {
+				$ids[] = $id;
+			}
+		}
+
+		return $ids;
+	}
+
+	/**
+	 * @param int $user_id Held user ID.
+	 */
+	private static function mark_webhook_notified( $user_id ) {
+		$ids   = self::webhook_notified_ids();
+		$ids[] = (int) $user_id;
+		$ids   = array_values( array_unique( $ids ) );
+
+		if ( count( $ids ) > 100 ) {
+			$ids = array_slice( $ids, -100 );
+		}
+
+		update_option( self::WEBHOOK_NOTIFIED, $ids, false );
+	}
+
+	/**
 	 * Email settings under the report.
 	 */
 	public static function render() {
@@ -488,6 +871,7 @@ class NueM8_Safety_Pass_Mail {
 		}
 
 		echo '</section>';
+		self::render_webhook();
 	}
 
 	/**
@@ -517,6 +901,8 @@ class NueM8_Safety_Pass_Mail {
 	 * @param array<string, mixed> $findings Site checks.
 	 */
 	private static function notify_attention( array $findings ) {
+		self::push_attention( $findings );
+
 		if ( ! self::can_send() ) {
 			return;
 		}
@@ -901,12 +1287,14 @@ class NueM8_Safety_Pass_Mail {
 	/**
 	 * @param string $flag Redirect result.
 	 */
-	private static function redirect( $flag ) {
+	private static function redirect( $flag, $key = 'mail' ) {
+		$key = 'webhook' === $key ? 'webhook' : 'mail';
+
 		wp_safe_redirect(
 			wp_nonce_url(
 				add_query_arg(
 					array(
-						'mail' => $flag,
+						$key => $flag,
 					),
 					admin_url( 'admin.php?page=nuem8-safety-pass' )
 				),

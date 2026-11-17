@@ -253,16 +253,28 @@ class NueM8_Safety_Pass_Admin {
 		self::render_access_notice();
 		self::render_plugin_update_notice();
 
+		if ( '1' === self::query_flag( 'checks_saved' ) ) {
+			echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'The checks on this tab are saved.', 'safety-pass-by-nuem8' ) . '</p></div>';
+		}
+
 		self::render_next( $next );
 		self::render_tabs( $findings, $active );
 
 		echo '<h2 class="screen-reader-text">' . esc_html( $tabs[ $active ]['label'] ) . '</h2>';
+		self::render_check_toggles( $active );
 		echo '<ol class="safety-pass__list">';
+
+		$shown = false;
 
 		foreach ( $tabs[ $active ]['ids'] as $id ) {
 			if ( isset( $findings[ $id ] ) ) {
 				self::render_finding( $findings[ $id ] );
+				$shown = true;
 			}
+		}
+
+		if ( ! $shown ) {
+			echo '<li class="safety-pass__item safety-pass__item--ok"><div class="safety-pass__body"><p>' . esc_html__( 'The checks on this tab are turned off.', 'safety-pass-by-nuem8' ) . '</p></div></li>';
 		}
 
 		echo '</ol>';
@@ -276,6 +288,94 @@ class NueM8_Safety_Pass_Admin {
 		do_action( 'nuem8_safety_pass_admin_page' );
 
 		echo '</div>';
+	}
+
+	/**
+	 * Save which checks on this tab stay in the report.
+	 */
+	public static function save_checks() {
+		if ( ! NueM8_Safety_Pass_Checks::current_user_can_view() ) {
+			self::deny( __( 'Only an administrator can change nuem8-safety-pass.', 'safety-pass-by-nuem8' ) );
+		}
+
+		check_admin_referer( 'nuem8_safety_pass_checks' );
+
+		$tabs = self::tab_definitions();
+		$tab  = isset( $_POST['tab'] ) ? sanitize_key( wp_unslash( $_POST['tab'] ) ) : '';
+
+		if ( ! isset( $tabs[ $tab ] ) ) {
+			self::deny( __( 'Only an administrator can change nuem8-safety-pass.', 'safety-pass-by-nuem8' ) );
+		}
+
+		$posted = array();
+
+		if ( isset( $_POST['checks'] ) && is_array( $_POST['checks'] ) ) {
+			foreach ( $_POST['checks'] as $id ) {
+				if ( is_string( $id ) ) {
+					$posted[] = sanitize_key( wp_unslash( $id ) );
+				}
+			}
+		}
+
+		$disabled = array_values( array_diff( NueM8_Safety_Pass_Checks::disabled_checks(), $tabs[ $tab ]['ids'] ) );
+
+		foreach ( $tabs[ $tab ]['ids'] as $id ) {
+			if ( ! in_array( $id, $posted, true ) ) {
+				$disabled[] = $id;
+			}
+		}
+
+		NueM8_Safety_Pass_Checks::save_disabled_checks( $disabled );
+		NueM8_Safety_Pass_Mail::forget_signature();
+
+		wp_safe_redirect(
+			self::with_screen_nonce(
+				add_query_arg(
+					array(
+						'page'         => 'nuem8-safety-pass',
+						'tab'          => $tab,
+						'checks_saved' => '1',
+					),
+					admin_url( 'admin.php' )
+				)
+			)
+		);
+		exit;
+	}
+
+	/**
+	 * Checkboxes for the checks on the open tab. A check is on until an administrator turns it off.
+	 *
+	 * @param string $active Active tab slug.
+	 */
+	private static function render_check_toggles( $active ) {
+		$tabs = self::tab_definitions();
+
+		if ( ! isset( $tabs[ $active ] ) ) {
+			return;
+		}
+
+		echo '<form class="safety-pass__checks" method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
+		wp_nonce_field( 'nuem8_safety_pass_checks' );
+		echo '<input type="hidden" name="action" value="nuem8_safety_pass_checks" />';
+		echo '<input type="hidden" name="tab" value="' . esc_attr( $active ) . '" />';
+		echo '<fieldset>';
+		echo '<legend>' . esc_html__( 'Checks on this tab', 'safety-pass-by-nuem8' ) . '</legend>';
+		echo '<p>' . esc_html__( 'Uncheck a check to leave it out of this page, the next step, and the email.', 'safety-pass-by-nuem8' ) . '</p>';
+
+		if ( 'administrators' === $active ) {
+			echo '<p>' . esc_html__( 'A new administrator is still disabled until a signed-in administrator approves them.', 'safety-pass-by-nuem8' ) . '</p>';
+		}
+
+		echo '<ul>';
+
+		foreach ( $tabs[ $active ]['ids'] as $id ) {
+			echo '<li><label><input type="checkbox" name="checks[]" value="' . esc_attr( $id ) . '"' . checked( NueM8_Safety_Pass_Checks::check_enabled( $id ), true, false ) . '> ' . esc_html( self::gauge_label( $id ) ) . '</label></li>';
+		}
+
+		echo '</ul>';
+		submit_button( __( 'Save checks', 'safety-pass-by-nuem8' ), 'secondary', 'submit', false );
+		echo '</fieldset></form>';
 	}
 
 	/**
@@ -357,7 +457,7 @@ class NueM8_Safety_Pass_Admin {
 			self::render_unused_plugins( $items );
 		}
 
-		if ( in_array( (string) $finding['id'], array( 'core', 'files' ), true ) && array() !== $items ) {
+		if ( in_array( (string) $finding['id'], array( 'core', 'php_files', 'files' ), true ) && array() !== $items ) {
 			$names = array();
 
 			foreach ( $items as $name ) {
@@ -705,6 +805,115 @@ class NueM8_Safety_Pass_Admin {
 			: __( 'Sign-in times start while nuem8-safety-pass is active. An administrator who is already signed in keeps that session time. Approve adds a new administrator to the expected list. This plugin does not block that sign-in.', 'safety-pass-by-nuem8' );
 
 		echo '<p class="safety-pass__meta">' . esc_html( $admin_note ) . '</p>';
+		self::render_login_log();
+	}
+
+	/**
+	 * Last 50 administrator sign-ins, and a CSV of that list.
+	 */
+	private static function render_login_log() {
+		$rows = NueM8_Safety_Pass_Checks::login_log();
+		$url  = wp_nonce_url(
+			admin_url( 'admin-post.php?action=nuem8_safety_pass_login_log' ),
+			'nuem8_safety_pass_login_log'
+		);
+
+		echo '<div class="safety-pass__log-head">';
+		echo '<h3>' . esc_html__( 'Sign-in history', 'safety-pass-by-nuem8' ) . '</h3>';
+		echo '<a class="button button-secondary" href="' . esc_url( $url ) . '">' . esc_html__( 'Download CSV', 'safety-pass-by-nuem8' ) . '</a>';
+		echo '</div>';
+		echo '<p class="safety-pass__meta">' . esc_html__( 'The last 50 administrator sign-ins stay on this site. Older rows are dropped. This list is not loaded on public pages.', 'safety-pass-by-nuem8' ) . '</p>';
+
+		if ( array() === $rows ) {
+			echo '<p class="safety-pass__meta">' . esc_html__( 'No sign-ins recorded yet.', 'safety-pass-by-nuem8' ) . '</p>';
+			return;
+		}
+
+		echo '<div class="safety-pass__table-wrap">';
+		echo '<table class="safety-pass__table">';
+		echo '<caption class="screen-reader-text">' . esc_html__( 'Administrator sign-in history', 'safety-pass-by-nuem8' ) . '</caption>';
+		echo '<thead><tr>';
+		echo '<th scope="col">' . esc_html__( 'Time', 'safety-pass-by-nuem8' ) . '</th>';
+		echo '<th scope="col">' . esc_html__( 'Login', 'safety-pass-by-nuem8' ) . '</th>';
+		echo '<th scope="col">' . esc_html__( 'IP address', 'safety-pass-by-nuem8' ) . '</th>';
+		echo '<th scope="col">' . esc_html__( 'User agent', 'safety-pass-by-nuem8' ) . '</th>';
+		echo '</tr></thead><tbody>';
+
+		foreach ( $rows as $row ) {
+			$when = wp_date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $row['time'] );
+			$ip   = '' !== $row['ip'] ? $row['ip'] : __( 'No address recorded', 'safety-pass-by-nuem8' );
+			$agent = '' !== $row['agent'] ? $row['agent'] : __( 'No user agent recorded', 'safety-pass-by-nuem8' );
+
+			echo '<tr>';
+			echo '<th scope="row">' . esc_html( $when ) . '</th>';
+			echo '<td>' . esc_html( $row['login'] ) . '</td>';
+			echo '<td>' . esc_html( $ip ) . '</td>';
+			echo '<td class="safety-pass__agent">' . esc_html( $agent ) . '</td>';
+			echo '</tr>';
+		}
+
+		echo '</tbody></table></div>';
+	}
+
+	/**
+	 * Send the sign-in history as a CSV file. The file is built in the browser response and is not saved on the server.
+	 */
+	public static function download_login_log() {
+		if ( ! NueM8_Safety_Pass_Checks::current_user_can_view() ) {
+			self::deny( __( 'Only an administrator can open nuem8-safety-pass.', 'safety-pass-by-nuem8' ) );
+		}
+
+		check_admin_referer( 'nuem8_safety_pass_login_log' );
+
+		$rows = NueM8_Safety_Pass_Checks::login_log();
+
+		nocache_headers();
+		header( 'Content-Type: text/csv; charset=utf-8' );
+		header( 'Content-Disposition: attachment; filename=safety-pass-sign-ins.csv' );
+
+		$out = fopen( 'php://output', 'w' );
+
+		if ( false === $out ) {
+			echo 'time,login,user_id,ip,user_agent';
+			exit;
+		}
+
+		fputcsv(
+			$out,
+			array( 'time', 'login', 'user_id', 'ip', 'user_agent' )
+		);
+
+		foreach ( $rows as $row ) {
+			fputcsv(
+				$out,
+				array(
+					wp_date( 'c', $row['time'] ),
+					self::csv_cell( $row['login'] ),
+					(string) $row['user_id'],
+					self::csv_cell( $row['ip'] ),
+					self::csv_cell( $row['agent'] ),
+				)
+			);
+		}
+
+		fclose( $out );
+		exit;
+	}
+
+	/**
+	 * Keep a cell from being read as a formula when the CSV is opened in a spreadsheet.
+	 *
+	 * @param string $value Cell text.
+	 * @return string
+	 */
+	private static function csv_cell( $value ) {
+		$value = (string) $value;
+
+		if ( preg_match( '/^[=+\-@\t\r]/', $value ) ) {
+			return "'" . $value;
+		}
+
+		return $value;
 	}
 
 	/**
@@ -821,7 +1030,7 @@ class NueM8_Safety_Pass_Admin {
 		return array(
 			'wordpress'      => array(
 				'label' => __( 'WordPress', 'safety-pass-by-nuem8' ),
-				'ids'   => array( 'backup', 'php', 'wordpress', 'core', 'files' ),
+				'ids'   => array( 'backup', 'php', 'wordpress', 'core', 'php_files', 'files' ),
 			),
 			'plugins'        => array(
 				'label' => __( 'Plugins', 'safety-pass-by-nuem8' ),
@@ -1104,6 +1313,7 @@ class NueM8_Safety_Pass_Admin {
 			'admins'         => __( 'Admin Accounts', 'safety-pass-by-nuem8' ),
 			'backup'         => __( 'Site Backup', 'safety-pass-by-nuem8' ),
 			'core'           => __( 'Core Files', 'safety-pass-by-nuem8' ),
+			'php_files'      => __( 'PHP files', 'safety-pass-by-nuem8' ),
 			'files'          => __( 'File Notes', 'safety-pass-by-nuem8' ),
 		);
 

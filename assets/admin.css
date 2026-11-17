@@ -25,6 +25,32 @@
 	max-width: 62ch;
 }
 
+.safety-pass__checks {
+	margin: 0 0 16px;
+	padding: 12px 14px;
+	background: #fff;
+	border: 1px solid #dcdcde;
+}
+
+.safety-pass__checks legend {
+	font-weight: 600;
+}
+
+.safety-pass__checks ul {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px 18px;
+	margin: 8px 0 12px;
+	padding: 0;
+	list-style: none;
+}
+
+.safety-pass__checks label {
+	display: flex;
+	gap: 6px;
+	align-items: center;
+}
+
 .safety-pass__next {
 	display: flex;
 	flex-wrap: wrap;
@@ -200,6 +226,24 @@
 	font-weight: 600;
 }
 
+.safety-pass__log-head {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px 16px;
+	margin-top: 20px;
+}
+
+.safety-pass__log-head h3 {
+	margin: 0;
+}
+
+.safety-pass__agent {
+	word-break: break-word;
+	max-width: 28rem;
+}
+
 .safety-pass__meta {
 	display: block;
 	margin-top: 8px;
@@ -272,6 +316,11 @@
 
 .safety-pass-mail__test {
 	margin-top: 12px;
+}
+
+.safety-pass-mail input[type="url"] {
+	width: min(100%, 36rem);
+	margin-right: 8px;
 }
 
 .safety-pass-prompt {
