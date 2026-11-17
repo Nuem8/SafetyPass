@@ -14,17 +14,28 @@ if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
  */
 function nuem8_safety_pass_uninstall_site() {
 	delete_option( 'nuem8_safety_pass_admins' );
+	delete_option( 'nuem8_safety_pass_login_log' );
 	delete_option( 'nuem8_safety_pass_mail_recipient' );
 	delete_option( 'nuem8_safety_pass_mail_signature' );
 	delete_option( 'nuem8_safety_pass_mail_held_notified' );
 	delete_option( 'nuem8_safety_pass_mail_last_error' );
 	delete_option( 'nuem8_safety_pass_mail_prompt' );
+	delete_option( 'nuem8_safety_pass_webhook_url' );
+	delete_option( 'nuem8_safety_pass_webhook_signature' );
+	delete_option( 'nuem8_safety_pass_webhook_held' );
+	delete_option( 'nuem8_safety_pass_webhook_error' );
 	delete_option( 'nuem8_safety_pass_pro_recipient' );
 	delete_option( 'nuem8_safety_pass_pro_signature' );
 	delete_option( 'nuem8_safety_pass_pro_held_notified' );
 	delete_option( 'nuem8_safety_pass_pro_last_error' );
+	delete_option( 'nuem8_sp_disabled_checks' );
+	delete_option( 'nuem8_sp_php_files' );
+	delete_option( 'nuem8_sp_php_refresh' );
+	delete_option( 'nuem8_sp_php_scope' );
 	delete_transient( 'nuem8_sp_core' );
 	delete_transient( 'nuem8_sp_core_lock' );
+	delete_transient( 'nuem8_sp_php_cache' );
+	delete_transient( 'nuem8_sp_php_lock' );
 	wp_clear_scheduled_hook( 'nuem8_safety_pass_daily' );
 	wp_clear_scheduled_hook( 'nuem8_safety_pass_pro_daily' );
 
@@ -62,6 +73,12 @@ if ( is_multisite() ) {
 } else {
 	nuem8_safety_pass_uninstall_site();
 }
+
+delete_site_option( 'nuem8_sp_php_files' );
+delete_site_option( 'nuem8_sp_php_refresh' );
+delete_site_option( 'nuem8_sp_php_scope' );
+delete_site_transient( 'nuem8_sp_php_cache' );
+delete_site_transient( 'nuem8_sp_php_lock' );
 
 delete_metadata( 'user', 0, 'nuem8_safety_pass_last_login', '', true );
 delete_metadata( 'user', 0, 'nuem8_safety_pass_disabled', '', true );

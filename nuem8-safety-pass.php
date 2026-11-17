@@ -3,7 +3,7 @@
  * Plugin Name: NueM8 Safety Pass
  * Plugin URI: https://nuem8.com/wordpress/nuem8-safety-pass
  * Description: A central health dashboard for WordPress site owners. Instant diagnostic overview of core files, PHP, backups, and your top priority step.
- * Version: 1.1.0
+ * Version: 1.2.0
  * Author: NueM8
  * Author URI: https://nuem8.com
  * Copyright: 2026 NueM8 LLC
@@ -20,14 +20,20 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'NUEM8_SAFETY_PASS_VERSION', '1.1.0' );
+define( 'NUEM8_SAFETY_PASS_VERSION', '1.2.0' );
 define( 'NUEM8_SAFETY_PASS_FILE', __FILE__ );
 define( 'NUEM8_SAFETY_PASS_DIR', plugin_dir_path( __FILE__ ) );
 
 require_once NUEM8_SAFETY_PASS_DIR . 'includes/class-nuem8-safety-pass-checks.php';
+require_once NUEM8_SAFETY_PASS_DIR . 'includes/class-nuem8-safety-pass-php-files.php';
 require_once NUEM8_SAFETY_PASS_DIR . 'includes/class-nuem8-safety-pass-hold.php';
 require_once NUEM8_SAFETY_PASS_DIR . 'includes/class-nuem8-safety-pass-mail.php';
 require_once NUEM8_SAFETY_PASS_DIR . 'includes/class-nuem8-safety-pass-admin.php';
+
+if ( defined( 'WP_CLI' ) && WP_CLI ) {
+	require_once NUEM8_SAFETY_PASS_DIR . 'includes/class-nuem8-safety-pass-cli.php';
+	WP_CLI::add_command( 'safetypass', 'NueM8_Safety_Pass_CLI' );
+}
 
 NueM8_Safety_Pass_Mail::migrate_legacy_options();
 
@@ -127,8 +133,18 @@ add_action(
 );
 
 add_action(
+	'admin_post_nuem8_safety_pass_login_log',
+	array( 'NueM8_Safety_Pass_Admin', 'download_login_log' )
+);
+
+add_action(
 	'admin_post_nuem8_safety_pass_update_plugins',
 	array( 'NueM8_Safety_Pass_Admin', 'update_plugins' )
+);
+
+add_action(
+	'admin_post_nuem8_safety_pass_checks',
+	array( 'NueM8_Safety_Pass_Admin', 'save_checks' )
 );
 
 add_action(
@@ -167,6 +183,16 @@ add_action(
 );
 
 add_action(
+	'admin_post_nuem8_safety_pass_webhook',
+	array( 'NueM8_Safety_Pass_Mail', 'save_webhook' )
+);
+
+add_action(
+	'admin_post_nuem8_safety_pass_webhook_test',
+	array( 'NueM8_Safety_Pass_Mail', 'send_webhook_test_request' )
+);
+
+add_action(
 	'admin_post_nuem8_safety_pass_mail_prompt_dismiss',
 	array( 'NueM8_Safety_Pass_Mail', 'dismiss_prompt' )
 );
@@ -174,6 +200,27 @@ add_action(
 add_action(
 	'activated_plugin',
 	array( 'NueM8_Safety_Pass_Mail', 'redirect_after_activate' )
+);
+
+add_action(
+	'upgrader_process_complete',
+	array( 'NueM8_Safety_Pass_Php_Files', 'on_upgrade' ),
+	10,
+	2
+);
+
+add_action(
+	'deleted_plugin',
+	array( 'NueM8_Safety_Pass_Php_Files', 'on_plugin_deleted' ),
+	10,
+	2
+);
+
+add_action(
+	'deleted_theme',
+	array( 'NueM8_Safety_Pass_Php_Files', 'on_theme_deleted' ),
+	10,
+	2
 );
 
 add_action(

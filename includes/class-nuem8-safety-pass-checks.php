@@ -16,10 +16,13 @@ class NueM8_Safety_Pass_Checks {
 
 	const BASELINE_OPTION = 'nuem8_safety_pass_admins';
 	const LAST_LOGIN_META = 'nuem8_safety_pass_last_login';
+	const LOGIN_LOG_OPTION = 'nuem8_safety_pass_login_log';
+	const LOGIN_LOG_CAP    = 50;
 	const DISABLED_META   = 'nuem8_safety_pass_disabled';
 	const VIEW_CAP        = 'nuem8_safety_pass';
 	const CORE_CACHE      = 'nuem8_sp_core';
 	const CORE_LOCK       = 'nuem8_sp_core_lock';
+	const DISABLED_CHECKS = 'nuem8_sp_disabled_checks';
 
 	/**
 	 * Give the view capability to the administrator role only.
@@ -91,16 +94,31 @@ class NueM8_Safety_Pass_Checks {
 	 * @return array<string, array<string, mixed>>
 	 */
 	public static function publish_report() {
-		$findings = array(
-			'backup'         => self::backup(),
-			'php'            => self::php_version(),
-			'wordpress'      => self::wordpress_version(),
-			'core'           => self::core_files(),
-			'files'          => self::file_notes(),
-			'plugin_updates' => self::plugin_updates(),
-			'plugins'        => self::unused_plugins(),
-			'admins'         => self::administrators(),
+		/**
+		 * Disable a new administrator even when that check is turned off on the tab.
+		 */
+		do_action( 'nuem8_safety_pass_before_administrators' );
+
+		$findings = array();
+		$runners  = array(
+			'backup'         => 'backup',
+			'php'            => 'php_version',
+			'wordpress'      => 'wordpress_version',
+			'core'           => 'core_files',
+			'php_files'      => 'php_files_report',
+			'files'          => 'file_notes',
+			'plugin_updates' => 'plugin_updates',
+			'plugins'        => 'unused_plugins',
+			'admins'         => 'administrators',
 		);
+
+		foreach ( $runners as $id => $method ) {
+			if ( ! self::check_enabled( $id ) ) {
+				continue;
+			}
+
+			$findings[ $id ] = self::$method();
+		}
 
 		/**
 		 * Findings for the current site.
@@ -110,6 +128,80 @@ class NueM8_Safety_Pass_Checks {
 		do_action( 'nuem8_safety_pass_report', $findings );
 
 		return $findings;
+	}
+
+	/**
+	 * Every check an administrator can turn off.
+	 *
+	 * @return string[]
+	 */
+	public static function check_ids() {
+		return array(
+			'backup',
+			'php',
+			'wordpress',
+			'core',
+			'php_files',
+			'files',
+			'plugin_updates',
+			'plugins',
+			'admins',
+		);
+	}
+
+	/**
+	 * A missing choice means the check stays on.
+	 *
+	 * @param string $id Check id.
+	 * @return bool
+	 */
+	public static function check_enabled( $id ) {
+		return ! in_array( (string) $id, self::disabled_checks(), true );
+	}
+
+	/**
+	 * @return string[]
+	 */
+	public static function disabled_checks() {
+		$stored = get_option( self::DISABLED_CHECKS, array() );
+
+		if ( ! is_array( $stored ) ) {
+			return array();
+		}
+
+		$allowed = self::check_ids();
+		$ids     = array();
+
+		foreach ( $stored as $id ) {
+			if ( is_string( $id ) && in_array( $id, $allowed, true ) ) {
+				$ids[] = $id;
+			}
+		}
+
+		return array_values( array_unique( $ids ) );
+	}
+
+	/**
+	 * @param array $ids Check ids to leave out of the report.
+	 */
+	public static function save_disabled_checks( array $ids ) {
+		$allowed = self::check_ids();
+		$clean   = array();
+
+		foreach ( $ids as $id ) {
+			if ( is_string( $id ) && in_array( $id, $allowed, true ) ) {
+				$clean[] = $id;
+			}
+		}
+
+		$clean = array_values( array_unique( $clean ) );
+
+		if ( array() === $clean ) {
+			delete_option( self::DISABLED_CHECKS );
+			return;
+		}
+
+		update_option( self::DISABLED_CHECKS, $clean, false );
 	}
 
 	/**
@@ -535,6 +627,13 @@ class NueM8_Safety_Pass_Checks {
 	/**
 	 * @return array<string, mixed>
 	 */
+	private static function php_files_report() {
+		return NueM8_Safety_Pass_Php_Files::report();
+	}
+
+	/**
+	 * @return array<string, mixed>
+	 */
 	private static function administrators() {
 		/**
 		 * Disable a new administrator before this list is read.
@@ -786,7 +885,179 @@ class NueM8_Safety_Pass_Checks {
 			return;
 		}
 
-		update_user_meta( $user->ID, self::LAST_LOGIN_META, time() );
+		$now = time();
+		update_user_meta( $user->ID, self::LAST_LOGIN_META, $now );
+		self::remember_login( $user, $now );
+	}
+
+	/**
+	 * Newest administrator sign-ins kept on this site. At most LOGIN_LOG_CAP rows.
+	 *
+	 * The option is not autoloaded, so a public page does not load it.
+	 *
+	 * @return array<int, array{time: int, user_id: int, login: string, ip: string, agent: string}>
+	 */
+	public static function login_log() {
+		$raw = get_option( self::LOGIN_LOG_OPTION, null );
+
+		if ( ! is_array( $raw ) ) {
+			return array();
+		}
+
+		$clean = array();
+
+		foreach ( $raw as $row ) {
+			$item = self::login_row( $row );
+
+			if ( null === $item ) {
+				continue;
+			}
+
+			$clean[] = $item;
+
+			if ( count( $clean ) >= self::LOGIN_LOG_CAP ) {
+				break;
+			}
+		}
+
+		if ( count( $raw ) !== count( $clean ) ) {
+			self::save_login_log( $clean );
+		}
+
+		return $clean;
+	}
+
+	/**
+	 * @param WP_User $user Signed-in administrator.
+	 * @param int     $now  Unix time of this sign-in.
+	 */
+	private static function remember_login( WP_User $user, $now ) {
+		$login = sanitize_text_field( (string) $user->user_login );
+
+		if ( strlen( $login ) > 60 ) {
+			$login = substr( $login, 0, 60 );
+		}
+
+		$agent = isset( $_SERVER['HTTP_USER_AGENT'] ) ? sanitize_text_field( wp_unslash( (string) $_SERVER['HTTP_USER_AGENT'] ) ) : '';
+
+		if ( strlen( $agent ) > 256 ) {
+			$agent = substr( $agent, 0, 256 );
+		}
+
+		$row = self::login_row(
+			array(
+				'time'    => $now,
+				'user_id' => (int) $user->ID,
+				'login'   => $login,
+				'ip'      => self::request_ip(),
+				'agent'   => $agent,
+			)
+		);
+
+		if ( null === $row ) {
+			return;
+		}
+
+		$raw  = get_option( self::LOGIN_LOG_OPTION, null );
+		$rows = array( $row );
+
+		if ( is_array( $raw ) ) {
+			foreach ( $raw as $stored ) {
+				$item = self::login_row( $stored );
+
+				if ( null === $item ) {
+					continue;
+				}
+
+				$rows[] = $item;
+
+				if ( count( $rows ) >= self::LOGIN_LOG_CAP ) {
+					break;
+				}
+			}
+		}
+
+		self::save_login_log( $rows );
+	}
+
+	/**
+	 * @param mixed $row Stored row.
+	 * @return array{time: int, user_id: int, login: string, ip: string, agent: string}|null
+	 */
+	private static function login_row( $row ) {
+		if ( ! is_array( $row ) ) {
+			return null;
+		}
+
+		$time = self::unix_time( isset( $row['time'] ) ? $row['time'] : 0 );
+
+		if ( $time < 1 ) {
+			return null;
+		}
+
+		$user_id = isset( $row['user_id'] ) ? (int) $row['user_id'] : 0;
+
+		if ( $user_id < 1 ) {
+			return null;
+		}
+
+		$login = isset( $row['login'] ) ? sanitize_text_field( (string) $row['login'] ) : '';
+		$ip    = isset( $row['ip'] ) ? (string) $row['ip'] : '';
+		$agent = isset( $row['agent'] ) ? sanitize_text_field( (string) $row['agent'] ) : '';
+
+		if ( strlen( $login ) > 60 ) {
+			$login = substr( $login, 0, 60 );
+		}
+
+		if ( '' !== $ip && ! filter_var( $ip, FILTER_VALIDATE_IP ) ) {
+			$ip = '';
+		}
+
+		if ( strlen( $agent ) > 256 ) {
+			$agent = substr( $agent, 0, 256 );
+		}
+
+		return array(
+			'time'    => $time,
+			'user_id' => $user_id,
+			'login'   => $login,
+			'ip'      => $ip,
+			'agent'   => $agent,
+		);
+	}
+
+	/**
+	 * Address the browser connected from. A forwarded header is not used.
+	 *
+	 * @return string
+	 */
+	private static function request_ip() {
+		if ( empty( $_SERVER['REMOTE_ADDR'] ) || ! is_string( $_SERVER['REMOTE_ADDR'] ) ) {
+			return '';
+		}
+
+		$ip = sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) );
+
+		return filter_var( $ip, FILTER_VALIDATE_IP ) ? $ip : '';
+	}
+
+	/**
+	 * @param array<int, array{time: int, user_id: int, login: string, ip: string, agent: string}> $rows Newest first.
+	 */
+	private static function save_login_log( array $rows ) {
+		$rows = array_slice( $rows, 0, self::LOGIN_LOG_CAP );
+
+		if ( null === get_option( self::LOGIN_LOG_OPTION, null ) ) {
+			if ( add_option( self::LOGIN_LOG_OPTION, $rows, '', false ) ) {
+				return;
+			}
+		}
+
+		update_option( self::LOGIN_LOG_OPTION, $rows, false );
+
+		if ( function_exists( 'wp_set_option_autoload' ) ) {
+			wp_set_option_autoload( self::LOGIN_LOG_OPTION, false );
+		}
 	}
 
 	/**
@@ -818,13 +1089,44 @@ class NueM8_Safety_Pass_Checks {
 			return 'invalid';
 		}
 
+		return self::complete_approval( $user_id, true );
+	}
+
+	/**
+	 * Approve one administrator from WP-CLI.
+	 *
+	 * A user set with --user must be allowed to open Safety Pass. With no user, the shell is the operator.
+	 *
+	 * @param int $user_id User ID.
+	 * @return string approved, approve_self, unchanged, or invalid.
+	 */
+	public static function approve_for_cli( $user_id ) {
+		if ( ! defined( 'WP_CLI' ) || ! WP_CLI ) {
+			return 'invalid';
+		}
+
+		if ( (int) get_current_user_id() > 0 ) {
+			return self::approve_admin( $user_id );
+		}
+
+		return self::complete_approval( $user_id, false );
+	}
+
+	/**
+	 * Mark a new administrator as expected and lift the hold.
+	 *
+	 * @param int  $user_id    User ID.
+	 * @param bool $block_self Refuse when this is the signed-in account.
+	 * @return string approved, approve_self, unchanged, or invalid.
+	 */
+	private static function complete_approval( $user_id, $block_self ) {
 		$user_id = (int) $user_id;
 
 		if ( $user_id < 1 ) {
 			return 'invalid';
 		}
 
-		if ( $user_id === (int) get_current_user_id() ) {
+		if ( $block_self && $user_id === (int) get_current_user_id() ) {
 			return 'approve_self';
 		}
 
@@ -832,7 +1134,7 @@ class NueM8_Safety_Pass_Checks {
 			return 'unchanged';
 		}
 
-		if ( ! self::trust_admin( $user_id ) ) {
+		if ( ! self::add_expected_admin( $user_id ) ) {
 			return 'invalid';
 		}
 
@@ -1166,6 +1468,18 @@ class NueM8_Safety_Pass_Checks {
 			return false;
 		}
 
+		return self::add_expected_admin( $user_id );
+	}
+
+	/**
+	 * Add one administrator to the expected list.
+	 *
+	 * The caller has already checked that this change is allowed.
+	 *
+	 * @param int $user_id User ID.
+	 * @return bool
+	 */
+	private static function add_expected_admin( $user_id ) {
 		$user_id = (int) $user_id;
 
 		if ( $user_id < 1 ) {
